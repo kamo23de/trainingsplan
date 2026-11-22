@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -12,7 +12,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from trainingsplan import __version__
+from trainingsplan.analytics.activity_detail import activity_detail
 from trainingsplan.analytics.dashboard import RANGES, build_dashboard
+from trainingsplan.config import get_settings
 from trainingsplan.storage.db import init_db, session_scope
 from trainingsplan.storage.models import Activity
 
@@ -70,6 +72,14 @@ def summary(db: DbSession) -> dict:
 @app.get("/api/dashboard")
 def dashboard_data(db: DbSession, range: RangeKey = "1y") -> dict:  # noqa: A002
     return build_dashboard(db, range)
+
+
+@app.get("/api/activities/{activity_id}")
+def activity_data(activity_id: int, db: DbSession) -> dict:
+    activity = db.get(Activity, activity_id)
+    if activity is None:
+        raise HTTPException(status_code=404, detail="Aktivität nicht gefunden")
+    return activity_detail(db, activity, get_settings().data_dir)
 
 
 @app.get("/", response_class=HTMLResponse)
