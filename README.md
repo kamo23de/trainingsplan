@@ -63,14 +63,10 @@ uv run ruff check .
 
 ## Garmin anbinden
 
-**Historie (einmalig):** Im Garmin-Konto den Datenexport anfordern. Das ZIP nach
-`data/garmin-export/` legen (gern entpackt), dann prüfen:
+Beide Wege liefern die Original-FIT-Dateien und landen im selben Import. Dieselbe Fahrt
+wird dabei nur einmal gespeichert (Erkennung über Dateiinhalt und Startzeit).
 
-```sh
-uv run trainingsplan scan-export
-```
-
-**Laufende Synchronisierung:** In Garmin Connect Web einen *Personal API Key* erstellen
+**Zugang einrichten:** In Garmin Connect Web einen *Personal API Key* erstellen
 (Laufzeit am besten 1 Jahr; der Key wird nur einmal angezeigt). Dann:
 
 ```sh
@@ -78,10 +74,38 @@ uv run trainingsplan garmin-key     # Key im Schlüsselbund speichern
 uv run trainingsplan garmin-check   # Verbindung testen
 ```
 
+**Historie und laufende Aktualisierung über die API:**
+
+```sh
+uv run trainingsplan sync                     # ab letzter Aktivität (beim ersten Mal: 4 Jahre)
+uv run trainingsplan sync --since 2023-01-01  # gezielt ab einem Datum
+```
+
+**Alternative für die Historie – Garmin-Datenexport:** Falls die API nicht weit genug
+zurückreicht, im Garmin-Konto den Datenexport anfordern und das ZIP importieren:
+
+```sh
+uv run trainingsplan import-export ~/Downloads/<export>.zip
+```
+
+## Leistungsschwellen
+
+FTP und Schwellenpuls werden zunächst aus den FIT-Dateien übernommen (Werte, die zum
+Zeitpunkt der Fahrt auf dem Gerät eingestellt waren). Eigene Werte haben Vorrang und
+gelten ab dem angegebenen Datum bis zum nächsten Eintrag:
+
+```sh
+uv run trainingsplan threshold-add 2024-03-01 --ftp 265 --lthr 166 --note "FTP-Test"
+uv run trainingsplan recompute                 # Belastung aller Fahrten neu berechnen
+```
+
+Die Datenbank lässt sich jederzeit neu aufbauen, die Rohdateien in `data/raw/` bleiben
+erhalten: `uv run trainingsplan init-db --reset` und anschließend
+`uv run trainingsplan import-export data/raw`.
+
 ## Nächste Schritte
 
-1. FIT-Parser in `ingest/` (Garmin FIT SDK) und Import des Garmin-Exports
-2. FTP-/Schwellenpuls-Historie erfassen, TSS für alle Aktivitäten berechnen
-3. Dashboard: Wochenumfänge, lange Fahrten, Fitness/Ermüdung/Form (CTL/ATL/TSB)
-4. Synchronisierung über die Personal API
-5. Ziele erfassen und Planungsvorausschau
+1. ~~FIT-Import aus Garmin-Export und Personal API, TSS pro Aktivität~~
+2. Dashboard: Wochenumfänge, lange Fahrten, Fitness/Ermüdung/Form (CTL/ATL/TSB)
+3. Gesundheitsdaten (HRV, Schlaf) über die Personal API
+4. Ziele erfassen und Planungsvorausschau
