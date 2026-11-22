@@ -1,0 +1,1 @@
+"""Datenhaltung: Datenmodell und Datenbankzugriff."""

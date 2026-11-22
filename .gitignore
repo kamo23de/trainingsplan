@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Lokale Konfiguration und Geheimnisse
+.env
+*.key
+
+# Trainingsdaten: Rohdaten, Exporte und Datenbank bleiben lokal
+data/
+
+# macOS / Editoren
+.DS_Store
+.vscode/
+.idea/

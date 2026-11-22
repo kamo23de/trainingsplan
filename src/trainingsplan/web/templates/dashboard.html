@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Trainingsplan{% endblock %}
+{% block content %}
+<section class="tiles">
+  <div class="tile">
+    <div class="value">{{ summary.activities }}</div>
+    <div class="label">Aktivitäten</div>
+  </div>
+  <div class="tile">
+    <div class="value">{{ "{:,.0f}".format(summary.distance_km).replace(",", ".") }} km</div>
+    <div class="label">Gesamtdistanz</div>
+  </div>
+  <div class="tile">
+    <div class="value">{{ summary.first_activity[:10] if summary.first_activity else "–" }}</div>
+    <div class="label">Erste Aktivität</div>
+  </div>
+  <div class="tile">
+    <div class="value">{{ summary.last_activity[:10] if summary.last_activity else "–" }}</div>
+    <div class="label">Letzte Aktivität</div>
+  </div>
+</section>
+
+{% if summary.activities == 0 %}
+<p class="muted">Noch keine Daten importiert. Nächster Schritt: Garmin-Export importieren
+(siehe README).</p>
+{% endif %}
+{% endblock %}
