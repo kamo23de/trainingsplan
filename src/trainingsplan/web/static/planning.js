@@ -9,7 +9,7 @@
   const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August",
     "September", "Oktober", "November", "Dezember"];
-  const CATEGORY_SLOT = { "Rad": 1, "eBike": 2, "Sonstige": 3 };
+  const CATEGORY_SLOT = { "Rad": 1, "eBike": 2, "Sonstige": 3, "Laufen": 4, "Rudern": 5, "Kraft": 6 };
   // Intensität geplanter Einheiten: eine Farbe, hell → dunkel
   const INTENSITY = { recovery: 0, openers: 1, endurance: 1, long: 2, tempo: 3, sweetspot: 4, threshold: 5, vo2: 6, row: 1, run: 1, core: 0 };
   const CROSS = { row: "Rudern", run: "Laufen", core: "Rumpf" };
@@ -281,14 +281,17 @@
   const workoutDialog = document.getElementById("workout-dialog");
   function openWorkout(w) {
     document.getElementById("workout-title").textContent = `${w.title} · ${fmtDate(w.day)}`;
+    const program = w.program && TP.exercises ? TP.exercises.renderProgram(w.program) : "";
+    workoutDialog.classList.toggle("wide", Boolean(program));
     document.getElementById("workout-body").innerHTML = `
       <div class="tiles act-tiles">
         <div class="tile"><div class="value">${fmtH(w.hours)}</div><div class="label">Dauer</div></div>
         <div class="tile"><div class="value">${w.tss}</div><div class="label">geplante Belastung (TSS)</div></div>
       </div>
-      <p>${esc(w.description)}</p>
+      ${program || `<p>${esc(w.description)}</p>`}
       <p class="muted">Der Plan wird bei jeder neuen Aktivität und jeder Änderung an Events oder Verfügbarkeit neu berechnet.</p>`;
     workoutDialog.showModal();
+    document.getElementById("workout-body").scrollTop = 0;
   }
 
   // --- Ereignisse --------------------------------------------------------------

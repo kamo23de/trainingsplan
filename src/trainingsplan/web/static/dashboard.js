@@ -2,7 +2,8 @@
 (function () {
   "use strict";
 
-  const CATEGORY_SLOT = { "Rad": 1, "eBike": 2, "Sonstige": 3 };
+  // Feste Farbe je Kategorie (Reihenfolge wie im Backend, Slot 1–6)
+  const CATEGORY_SLOT = { "Rad": 1, "eBike": 2, "Sonstige": 3, "Laufen": 4, "Rudern": 5, "Kraft": 6 };
   const nf0 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
   const nf1 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
   const charts = {};
@@ -80,6 +81,7 @@
       [nf1.format(k.bike_hours_per_week), "h", "Rad pro Woche (Ø)", "bike_per_week"],
       [nf0.format(k.long_rides), "", "Fahrten ab 4 h", "long_rides"],
       [nf0.format(k.longest_ride_km), "km", "Längste Fahrt", "longest"],
+      [nf1.format(k.cross_hours), "h", "Laufen, Rudern, Kraft", "cross_hours"],
     ];
     document.getElementById("kpis").innerHTML = tiles.map(([v, u, l, key]) =>
       `<div class="tile">${infoButton(key)}<div class="value">${v}<span class="unit">${u}</span></div><div class="label">${l}</div></div>`
@@ -139,7 +141,8 @@
       return `Woche ab ${fmtDate(w.weeks[i])}<br>${rows}<br>Gesamt: <b>${fmtHours(total)}</b>` +
         ` · ${nf0.format(w.km[i])} km · ${nf0.format(w.tss[i])} TSS`;
     };
-    const cats = Object.keys(w.hours);
+    // Kategorien ohne Stunden im Zeitraum weglassen; Farben bleiben fest je Kategorie
+    const cats = Object.keys(w.hours).filter((c) => w.hours[c].some((v) => v > 0));
     o.series = cats.map((cat, idx) => ({
       name: cat, type: "bar", stack: "h", data: w.hours[cat], barMaxWidth: 18,
       itemStyle: {
@@ -150,6 +153,24 @@
       emphasis: { focus: "series" },
     }));
     chart("chart-weekly").setOption(o, true);
+  }
+
+  function renderCategories(d) {
+    const rows = d.categories;
+    const maxH = Math.max(...rows.map((r) => r.hours), 1);
+    const total = rows.reduce((sum, r) => sum + r.hours, 0) || 1;
+    document.getElementById("table-categories").innerHTML = rows.length ? `
+      <thead><tr><th>Sportart</th><th class="num">Einheiten</th><th class="num">Stunden</th>
+        <th class="share-col">Anteil an der Zeit</th><th class="num">km</th><th class="num">TSS</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr>
+        <td><span class="swatch" style="background:${series(CATEGORY_SLOT[r.category])}"></span>${r.category}</td>
+        <td class="num">${nf0.format(r.count)}</td>
+        <td class="num">${nf1.format(r.hours)}</td>
+        <td class="share-col"><span class="share-bar" style="width:${(r.hours / maxH) * 100}%;background:${series(CATEGORY_SLOT[r.category])}"></span>
+          <span class="share-val">${nf0.format((r.hours / total) * 100)} %</span></td>
+        <td class="num">${r.km ? nf0.format(r.km) : "–"}</td>
+        <td class="num">${nf0.format(r.tss)}</td></tr>`).join("")}</tbody>`
+      : `<tbody><tr><td class="muted">Keine Aktivitäten im Zeitraum</td></tr></tbody>`;
   }
 
   function renderYears(d) {
@@ -235,6 +256,7 @@
     renderKpis(d);
     renderFitness(d);
     renderWeekly(d);
+    renderCategories(d);
     renderYears(d);
     renderFtp(d);
     activityTable("table-long", d.long_rides);

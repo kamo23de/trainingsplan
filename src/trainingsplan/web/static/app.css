@@ -303,3 +303,24 @@ dialog#event-dialog::backdrop, dialog#workout-dialog::backdrop { background: rgb
 .cal-item .sport { display: inline-block; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   padding: 0 .3rem; margin-right: .3rem; border-radius: 3px; background: var(--grid); color: var(--text-secondary); vertical-align: 1px; }
 .lg-cross { border: 1px dotted var(--text-muted); }
+
+/* Nach Sportart */
+.viz-root { --series-6: #008300; }
+@media (prefers-color-scheme: dark) { .viz-root { --series-6: #0ca30c; } }
+table.categories .share-col { width: 40%; min-width: 10rem; }
+.share-bar { display: inline-block; height: .6rem; border-radius: 0 3px 3px 0; vertical-align: middle; min-width: 2px; max-width: calc(100% - 3.5rem); }
+.share-val { margin-left: .4rem; color: var(--text-secondary); font-size: .8rem; }
+
+/* Übungen im Overlay */
+dialog#workout-dialog.wide { width: min(52rem, calc(100% - 2rem)); max-height: calc(100vh - 2rem); }
+.ex-rounds { margin: .2rem 0 .6rem; }
+.exercises { list-style: none; counter-reset: ex; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.exercise { counter-increment: ex; display: grid; grid-template-columns: 13rem 1fr; gap: 1rem; align-items: center;
+  padding: .6rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--page); }
+.ex-figure svg { width: 100%; height: auto; display: block; }
+.ex-head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin-bottom: .2rem; }
+.ex-head b::before { content: counter(ex) ". "; color: var(--text-muted); }
+.ex-dose { font-weight: 600; color: var(--accent); white-space: nowrap; }
+.ex-text ul { margin: .2rem 0 .35rem; padding-left: 1.1rem; font-size: .88rem; line-height: 1.45; }
+.ex-mistake { margin: 0; font-size: .82rem; color: var(--text-secondary); }
+@media (max-width: 640px) { .exercise { grid-template-columns: 1fr; } }

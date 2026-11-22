@@ -33,7 +33,7 @@
   // --- Inhalt ----------------------------------------------------------------
   function render(d) {
     const s = d.summary;
-    const category = s.is_ebike ? "eBike" : s.sport === "cycling" ? "Rad" : s.sport;
+    const category = s.category || s.sport;
     const basis = s.load_basis === "hr" ? " (aus HF)" : s.load_basis === "power" ? "" : "";
 
     const tiles = [

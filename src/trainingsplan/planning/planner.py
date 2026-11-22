@@ -28,6 +28,7 @@ from enum import StrEnum
 from trainingsplan.planning.workouts import (
     BIKE_KINDS,
     TSS_PER_HOUR,
+    core_program,
     describe,
 )
 
@@ -92,6 +93,7 @@ class Workout:
     tss: float
     description: str
     event_id: int | None = None
+    program: str | None = None  # Übungsprogramm bei Rumpf-Einheiten (core-a/b/c, mobility)
 
 
 @dataclass
@@ -208,7 +210,10 @@ def _make(
         title, text = describe("rest", 0, ftp)
         return Workout(day, "rest", title, 0, 0, text)
     title, text = describe(kind, hours, ftp, variant, lthr, level)
-    return Workout(day, kind, title, hours, round(hours * TSS_PER_HOUR[kind]), text)
+    program = core_program(variant) if kind == "core" else None
+    return Workout(
+        day, kind, title, hours, round(hours * TSS_PER_HOUR[kind]), text, program=program
+    )
 
 
 def quality_sessions(phase: Phase, ultra: bool) -> list[str]:

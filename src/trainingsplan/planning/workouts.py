@@ -43,6 +43,13 @@ def fmt_h(hours: float) -> str:
     return f"{h}:{m:02d} h" if h else f"{m} min"
 
 
+def core_program(variant: int) -> str:
+    """Schlüssel des Übungsprogramms; passt zu den Texten in ``describe``."""
+    if variant % 4 == 3:
+        return "mobility"
+    return ("core-a", "core-b", "core-c")[variant % 3]
+
+
 def describe(
     kind: str,
     hours: float,
@@ -235,7 +242,7 @@ def describe(
                 "15–20 min für lange Stunden im Sattel, 3 Runden: Unterarmstütz mit "
                 "Schulterantippen 16×, Y-T-W für die Schulterblätter je 8×, "
                 "Nacken-Isometrie (Kopf gegen die Hand) 4 × 10 s je Richtung, Bird Dog "
-                "10× je Seite. Danach Hüftbeuger und Brustmuskel dehnen."
+                "10× je Seite. Danach die Hüftbeuger dehnen."
             )
         return "Rumpf A: Basis", (
             "15–20 min, 3 Runden: Unterarmstütz 45 s, Seitstütz 30 s je Seite, Dead Bug "

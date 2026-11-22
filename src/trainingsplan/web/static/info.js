@@ -99,7 +99,7 @@ window.TP_INFO = {
   weekly_chart: {
     title: "Trainingsumfang pro Woche",
     body: `<p>Bewegungszeit pro Kalenderwoche (Montag bis Sonntag), gestapelt nach
-      <b>Rad</b>, <b>eBike</b> und <b>Sonstigem</b>. Der Tooltip zeigt zusätzlich die
+      Sportart (Rad, eBike, Laufen, Rudern, Kraft, Sonstige). Der Tooltip zeigt zusätzlich die
       Kilometer und die Gesamtbelastung (TSS) der Woche.</p>
       <p>Hilfreich, um Regelmäßigkeit, Aufbau- und Entlastungswochen sowie
       Trainingslücken zu erkennen.</p>`,
@@ -289,5 +289,24 @@ window.TP_INFO = {
       <p>Auch die Radeinheiten wechseln: Tempo, Sweet Spot und Schwelle in verschiedenen
       Formen, Grundlagen mit Trittfrequenz- oder Kraftausdauer-Teil, lange Fahrten mit
       Tempo-Abschnitt oder als Test von Ausrüstung und Verpflegung.</p>`,
+  },
+  cross_hours: {
+    title: "Laufen, Rudern, Kraft",
+    body: `<p>Stunden Ergänzungstraining im Zeitraum: Läufe, Indoor-Rudern und Kraft- bzw.
+      Rumpftraining, so wie Garmin sie aufgezeichnet hat.</p>`,
+  },
+  categories: {
+    title: "Nach Sportart",
+    body: `<p>Die Aktivitäten werden anhand der Sportart eingeordnet, die Garmin in der
+      FIT-Datei speichert:</p>
+      <table class="info-table">
+        <tr><td>Rad</td><td>Radfahren mit Muskelkraft (Straße, Gravel, MTB, Rolle)</td></tr>
+        <tr><td>eBike</td><td>Fahrten mit eBike-Profil – Belastung aus der Herzfrequenz</td></tr>
+        <tr><td>Laufen</td><td>Laufen, Trail, Laufband</td></tr>
+        <tr><td>Rudern</td><td>Rudern, auch Indoor-Rudern am Gerät</td></tr>
+        <tr><td>Kraft</td><td>Krafttraining, Rumpf-Stabi, Yoga, Pilates</td></tr>
+        <tr><td>Sonstige</td><td>alles andere, z. B. Wandern oder Schwimmen</td></tr>
+      </table>
+      <p>Jede Sportart hat überall im Rückblick dieselbe Farbe.</p>`,
   },
 };
