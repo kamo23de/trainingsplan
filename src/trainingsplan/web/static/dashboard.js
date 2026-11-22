@@ -223,7 +223,7 @@
   function activityTable(id, rows) {
     const head = `<thead><tr><th>Datum</th><th>Name</th><th>Art</th><th class="num">Dauer</th>
       <th class="num">km</th><th class="num">hm</th><th class="num">NP</th><th class="num">Ø HF</th>
-      <th class="num">TSS</th></tr></thead>`;
+      <th class="num">TSS</th><th class="num">Plan ${infoButton("compliance")}</th></tr></thead>`;
     const body = rows.map((r) => `<tr class="clickable" data-activity="${r.id}" tabindex="0" title="Details anzeigen">
       <td>${fmtDate(r.date)} ${r.date.slice(11)}</td>
       <td>${esc(r.name) || '<span class="muted">–</span>'}</td>
@@ -234,6 +234,7 @@
       <td class="num">${r.np_w ? r.np_w + " W" : "–"}</td>
       <td class="num">${r.avg_hr ?? "–"}</td>
       <td class="num" title="${r.load_basis === "hr" ? "aus Herzfrequenz" : r.load_basis === "power" ? "aus Leistung" : ""}">${r.tss ?? "–"}${r.load_basis === "hr" ? "*" : ""}</td>
+      <td class="num">${r.plan_score != null ? TP.scoreBadge({ score: r.plan_score, rating: r.plan_score >= 8 ? "gut" : r.plan_score >= 5 ? "teilweise" : "abweichend", planned_title: r.plan_title }) : '<span class="muted">–</span>'}</td>
     </tr>`).join("");
     document.getElementById(id).innerHTML = rows.length ? head + `<tbody>${body}</tbody>`
       : `<tbody><tr><td class="muted">Keine Einträge im Zeitraum</td></tr></tbody>`;

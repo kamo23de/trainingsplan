@@ -30,6 +30,30 @@
       <div class="label">${label}</div></div>`;
   }
 
+  const hoursText = (h) => (h >= 1 ? `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")} h` : `${Math.round(h * 60)} min`);
+
+  // --- Passung zum Plan -------------------------------------------------------
+  function complianceHtml(c) {
+    if (!c) return "";
+    if (c.score == null) {
+      return `<section class="card compliance"><h2>Passung zum Plan ${info("compliance")}</h2>
+        <p class="muted">${esc(c.note || "nicht bewertet")}</p></section>`;
+    }
+    const parts = c.parts ? Object.entries(c.parts).map(([label, [pts, max]]) => `
+      <div class="cp-row"><span>${label}</span>
+        <span class="cp-bar"><i style="width:${(pts / max) * 100}%"></i></span>
+        <span class="cp-val">${nf1.format(pts)} / ${max}</span></div>`).join("") : "";
+    const planned = c.planned_kind === "rest" ? "geplant: Ruhetag"
+      : `geplant: <b>${esc(c.planned_title)}</b>${c.planned_hours ? ` · ${hoursText(c.planned_hours)}` : ""}${c.planned_tss ? ` · ${nf0.format(c.planned_tss)} TSS` : ""}`;
+    return `<section class="card compliance">
+      <h2>Passung zum Plan ${info("compliance")}</h2>
+      <div class="cp-head">${TP.scoreBadge(c)}<span class="cp-rating">${esc(c.rating)}</span><span class="sub">${planned}</span></div>
+      ${parts ? `<div class="cp-parts">${parts}</div>` : ""}
+      ${c.note ? `<p class="cp-note">${esc(c.note)}</p>` : ""}
+      ${c.planned_description ? `<details><summary>Geplante Vorgabe</summary><p>${esc(c.planned_description)}</p></details>` : ""}
+    </section>`;
+  }
+
   // --- Inhalt ----------------------------------------------------------------
   function render(d) {
     const s = d.summary;
@@ -67,7 +91,8 @@
         </div>
         <button class="act-close" aria-label="Schließen">×</button>
       </div>
-      <section class="tiles act-tiles">${tiles.join("")}</section>`;
+      <section class="tiles act-tiles">${tiles.join("")}</section>
+      ${complianceHtml(d.compliance)}`;
 
     if (d.raw_file_missing || !d.streams) {
       html += `<p class="muted">Für diese Aktivität liegt keine FIT-Datei vor, daher keine Verläufe.</p>`;

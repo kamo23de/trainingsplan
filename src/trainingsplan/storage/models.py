@@ -12,7 +12,16 @@ Grundsätze:
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -129,6 +138,52 @@ class TrainingOption(Base):
 
     key: Mapped[str] = mapped_column(String(16), primary_key=True)
     enabled: Mapped[bool] = mapped_column(default=True)
+
+
+class PlannedWorkout(Base):
+    """Geplante Einheit eines Tages. Für vergangene Tage eingefroren, damit sich
+    absolvierte Aktivitäten mit dem damals gültigen Plan vergleichen lassen; für
+    kommende Tage wird der Eintrag bei jeder Neuberechnung ersetzt."""
+
+    __tablename__ = "planned_workout"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    kind: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(255))
+    hours: Mapped[float] = mapped_column(Float, default=0)
+    tss: Mapped[float] = mapped_column(Float, default=0)
+    description: Mapped[str] = mapped_column(Text, default="")
+    program: Mapped[str | None] = mapped_column(String(16))
+    variant: Mapped[int] = mapped_column(Integer, default=0)
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    ftp_w: Mapped[int | None] = mapped_column(Integer)
+    lthr_bpm: Mapped[int | None] = mapped_column(Integer)
+    event_id: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PlanCompliance(Base):
+    """Wie gut passt eine absolvierte Aktivität zur geplanten Einheit (0–10)?"""
+
+    __tablename__ = "plan_compliance"
+
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activity.id", ondelete="CASCADE"), primary_key=True
+    )
+    planned_id: Mapped[int | None] = mapped_column(Integer)
+    score: Mapped[float | None] = mapped_column(Float)
+    sport_pts: Mapped[float | None] = mapped_column(Float)
+    duration_pts: Mapped[float | None] = mapped_column(Float)
+    load_pts: Mapped[float | None] = mapped_column(Float)
+    intensity_pts: Mapped[float | None] = mapped_column(Float)
+    planned_title: Mapped[str | None] = mapped_column(String(255))
+    planned_kind: Mapped[str | None] = mapped_column(String(16))
+    planned_hours: Mapped[float | None] = mapped_column(Float)
+    planned_tss: Mapped[float | None] = mapped_column(Float)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 # Startwerte: unter der Woche kurze Einheiten nach Feierabend, am Wochenende lange Fahrten
