@@ -17,6 +17,7 @@ from trainingsplan.analytics.dashboard import RANGES, build_dashboard
 from trainingsplan.config import get_settings
 from trainingsplan.storage.db import init_db, session_scope
 from trainingsplan.storage.models import Activity
+from trainingsplan.web.planning_api import router as planning_router
 
 DbSession = Annotated[Session, Depends(session_scope)]
 
@@ -42,6 +43,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Trainingsplan", version=__version__, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+app.include_router(planning_router)
 
 RangeKey = Annotated[str, Query(pattern="^(" + "|".join([*RANGES, "all"]) + ")$")]
 
@@ -82,8 +85,22 @@ def activity_data(activity_id: int, db: DbSession) -> dict:
     return activity_detail(db, activity, get_settings().data_dir)
 
 
-@app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, db: DbSession) -> HTMLResponse:
+def _page(request: Request, template: str, active: str, **ctx) -> HTMLResponse:
     return TEMPLATES.TemplateResponse(
-        request, "dashboard.html", {"summary": summary(db), "version": __version__}
+        request, template, {"version": __version__, "active": active, **ctx}
     )
+
+
+@app.get("/", response_class=HTMLResponse)
+def start_page(request: Request) -> HTMLResponse:
+    return _page(request, "start.html", "start")
+
+
+@app.get("/rueckblick", response_class=HTMLResponse)
+def history_page(request: Request) -> HTMLResponse:
+    return _page(request, "dashboard.html", "history")
+
+
+@app.get("/planung", response_class=HTMLResponse)
+def planning_page(request: Request) -> HTMLResponse:
+    return _page(request, "planning.html", "plan")
