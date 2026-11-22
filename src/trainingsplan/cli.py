@@ -183,6 +183,12 @@ def sync(
     typer.echo(f"Fertig: {stats.summary()}")
     for err in stats.errors[:10]:
         typer.echo(f"  Fehler: {err}", err=True)
+    if stats.errors:
+        typer.echo(
+            f"Fehlgeschlagene Downloads erneut versuchen: "
+            f"`trainingsplan sync --since {start_date}` "
+            "(bereits importierte Aktivitäten werden dabei übersprungen)."
+        )
 
 
 # --- Leistungsschwellen ------------------------------------------------------------
