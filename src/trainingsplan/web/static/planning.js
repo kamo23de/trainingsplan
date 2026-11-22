@@ -11,7 +11,8 @@
     "September", "Oktober", "November", "Dezember"];
   const CATEGORY_SLOT = { "Rad": 1, "eBike": 2, "Sonstige": 3 };
   // Intensität geplanter Einheiten: eine Farbe, hell → dunkel
-  const INTENSITY = { recovery: 0, openers: 1, endurance: 1, long: 2, tempo: 3, sweetspot: 4, threshold: 5, vo2: 6 };
+  const INTENSITY = { recovery: 0, openers: 1, endurance: 1, long: 2, tempo: 3, sweetspot: 4, threshold: 5, vo2: 6, row: 1, run: 1, core: 0 };
+  const CROSS = { row: "Rudern", run: "Laufen", core: "Rumpf" };
   const RAMP = ["#b7d3f6", "#9ec5f4", "#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"];
 
   const state = { month: null, plan: null, events: [], today: null };
@@ -143,6 +144,23 @@
     setTimeout(() => { saved.hidden = true; }, 2000);
   });
 
+  // --- Ergänzungstraining -----------------------------------------------------
+  async function renderOptions() {
+    const data = await api("/api/options");
+    document.getElementById("options-form").innerHTML = data.options.map((o) =>
+      `<label class="toggle"><input type="checkbox" name="${o.key}" ${o.enabled ? "checked" : ""}> ${esc(o.label)}</label>`).join("") +
+      `<span class="saved muted" hidden>gespeichert</span>`;
+  }
+  document.getElementById("options-form").addEventListener("change", async (ev) => {
+    const form = ev.currentTarget;
+    const options = Object.fromEntries([...form.querySelectorAll("input")].map((i) => [i.name, i.checked]));
+    await api("/api/options", { method: "PUT", body: JSON.stringify({ options }) });
+    await reload();
+    const saved = form.querySelector(".saved");
+    saved.hidden = false;
+    setTimeout(() => { saved.hidden = true; }, 2000);
+  });
+
   // --- Prognose ----------------------------------------------------------------
   let charts = {};
   async function renderProjection() {
@@ -242,8 +260,9 @@
         const plans = day.workouts.map((p, idx) => {
           const ref = `${key}#${idx}`;
           workoutIndex[ref] = { ...p, day: key };
-          return `<button class="cal-item plan" data-workout="${ref}" style="--intensity:${RAMP[INTENSITY[p.kind] ?? 1]}">
-            <span class="ci-title">${esc(p.title)}</span><span class="ci-meta">${fmtH(p.hours)} · ${p.tss} TSS</span></button>`;
+          const cross = CROSS[p.kind];
+          return `<button class="cal-item plan${cross ? " cross" : ""}" data-workout="${ref}" style="--intensity:${RAMP[INTENSITY[p.kind] ?? 1]}">
+            <span class="ci-title">${cross ? `<span class="sport">${cross}</span>` : ""}${esc(cross ? p.title.replace(/^(Rudern|Laufen): /, "") : p.title)}</span><span class="ci-meta">${fmtH(p.hours)} · ${p.tss} TSS</span></button>`;
         }).join("");
         const empty = !events && !acts && !plans && !isPast ? `<button class="cal-add" data-new-event-date="${key}" title="Nebenevent an diesem Tag anlegen">+</button>` : "";
         cells.push(`<div class="cal-day${inMonth ? "" : " other"}${key === today ? " today" : ""}${isPast ? " past" : ""}">
@@ -505,5 +524,6 @@
   }
 
   renderAvailability();
+  renderOptions();
   reload();
 })();

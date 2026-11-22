@@ -161,3 +161,70 @@ def test_short_side_event_does_not_move_deload():
     ride = PlanEvent(9, "RTF 100", week + timedelta(days=6), 1, False, 100)
     plan = plan_for([ultra(), ride])
     assert {w.start: w for w in plan.weeks}[week].phase == Phase.DELOAD
+
+
+def _by_week(plan):
+    weeks = {}
+    for w in plan.workouts:
+        weeks.setdefault(w.day - timedelta(days=w.day.weekday()), []).append(w)
+    return weeks
+
+
+def test_cross_training_is_mixed_in_during_base_phase():
+    plan = plan_for([ultra()])
+    base_weeks = [w.start for w in plan.weeks if w.phase == Phase.BASE]
+    kinds = [w.kind for start in base_weeks[:6] for w in _by_week(plan)[start]]
+    assert "run" in kinds and "row" in kinds
+    assert kinds.count("core") >= 2 * 5
+
+
+def test_runs_start_short_and_build_up_slowly():
+    runs = [w for w in plan_for([ultra()]).workouts if w.kind == "run"]
+    assert runs[0].hours == 0.5 and "Geh" in runs[0].title
+    assert max(r.hours for r in runs) <= 0.75
+
+
+def test_no_cross_training_close_to_main_event():
+    ev = ultra()
+    plan = plan_for([ev])
+    late = [w for w in plan.workouts if timedelta(0) < ev.start - w.day <= timedelta(weeks=5)]
+    assert not [w for w in late if w.kind in ("run", "row")]
+
+
+def test_options_switch_cross_training_off():
+    plan = build_plan(
+        TODAY, 50, 50, 260, [ultra()], AVAIL, options={"row": False, "run": False, "core": False}
+    )
+    assert not [w for w in plan.workouts if w.kind in ("run", "row", "core")]
+
+
+def test_daily_total_respects_availability_with_core():
+    plan = plan_for([ultra()])
+    per_day = {}
+    for w in plan.workouts:
+        if w.kind not in ("event", "openers"):
+            per_day[w.day] = per_day.get(w.day, 0) + w.hours
+    for day, hours in per_day.items():
+        assert hours <= AVAIL[day.weekday()] + 1e-9, (day, hours)
+
+
+def test_core_sessions_are_not_on_consecutive_days():
+    for workouts in _by_week(plan_for([ultra()])).values():
+        days = sorted(w.day for w in workouts if w.kind == "core")
+        assert all((b - a).days > 1 for a, b in zip(days, days[1:], strict=False))
+
+
+def test_workouts_vary_from_week_to_week():
+    titles = {w.title for w in plan_for([ultra()]).workouts if w.kind in ("tempo", "long", "core")}
+    assert len(titles) >= 6
+
+
+def test_options_api_and_plan_reacts(client):
+    start = date.today() + timedelta(days=150)
+    client.post("/api/events", json=_event("Ultra", start, "A", days=5, distance_km=1500))
+    kinds = {w["kind"] for w in client.get("/api/plan").json()["workouts"]}
+    assert {"run", "row", "core"} <= kinds
+    r = client.put("/api/options", json={"options": {"run": False, "row": False, "core": False}})
+    assert [o["enabled"] for o in r.json()["options"]] == [False, False, False]
+    kinds = {w["kind"] for w in client.get("/api/plan").json()["workouts"]}
+    assert not kinds & {"run", "row", "core"}

@@ -25,24 +25,17 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from enum import StrEnum
 
+from trainingsplan.planning.workouts import (
+    BIKE_KINDS,
+    TSS_PER_HOUR,
+    describe,
+)
+
 CTL_DAYS = 42
 ATL_DAYS = 7
 RECOVERY_EVERY = 4  # jede 4. Woche Entlastung
 ULTRA_KM = 300
 KEY_EVENT_KM = 150  # Nebenevents ab dieser Distanz verschieben eine Entlastungswoche
-
-# Belastung pro Stunde je Einheitstyp (TSS/h, entspricht IF² · 100)
-TSS_PER_HOUR = {
-    "rest": 0,
-    "recovery": 30,
-    "openers": 45,
-    "endurance": 50,
-    "long": 52,
-    "tempo": 62,
-    "sweetspot": 72,
-    "threshold": 78,
-    "vo2": 80,
-}
 
 
 class Phase(StrEnum):
@@ -188,75 +181,6 @@ def week_phase(week_start: date, main_events: list[PlanEvent]) -> tuple[Phase, P
 # ---------------------------------------------------------------------------------
 
 
-def _watts(ftp: int | None, lo: float, hi: float) -> str:
-    if not ftp:
-        return f"{round(lo * 100)}–{round(hi * 100)} % FTP"
-    return f"{round(lo * 100)}–{round(hi * 100)} % FTP ({round(lo * ftp)}–{round(hi * ftp)} W)"
-
-
-def _cap(ftp: int | None, hi: float) -> str:
-    return f"{round(hi * 100)} % FTP" + (f" ({round(hi * ftp)} W)" if ftp else "")
-
-
-def _fmt_h(hours: float) -> str:
-    h, m = int(hours), round((hours - int(hours)) * 60)
-    return f"{h}:{m:02d} h" if h else f"{m} min"
-
-
-def describe(kind: str, hours: float, ftp: int | None) -> tuple[str, str]:
-    """Titel und Beschreibung einer Einheit mit konkreten Vorgaben."""
-    minutes = hours * 60
-    if kind == "recovery":
-        return "Locker rollen", (
-            f"{_fmt_h(hours)} sehr locker in Z1, unter {_cap(ftp, 0.55)}. "
-            "Hohe Trittfrequenz, kein Druck – dient nur der Durchblutung."
-        )
-    if kind == "openers":
-        return "Vorbelastung", (
-            f"{_fmt_h(hours)} locker in Z2 ({_watts(ftp, 0.56, 0.7)}), darin "
-            f"3 × 1 min zügig bei {_watts(ftp, 1.0, 1.1)} mit je 3 min Pause. "
-            "Hält die Beine wach vor dem Event."
-        )
-    if kind == "endurance":
-        return "Grundlage", (
-            f"{_fmt_h(hours)} gleichmäßig in Z2, {_watts(ftp, 0.56, 0.75)}. "
-            "Trittfrequenz 85–95, ruhige Atmung."
-        )
-    if kind == "long":
-        carbs = "60–90 g Kohlenhydrate pro Stunde" if hours >= 3 else "regelmäßig trinken und essen"
-        return "Lange Ausfahrt", (
-            f"{_fmt_h(hours)} in Z2, {_watts(ftp, 0.56, 0.72)}. An Anstiegen nicht über "
-            f"{_cap(ftp, 0.85)}. Verpflegung üben: {carbs}."
-        )
-    if kind == "tempo":
-        n = max(2, min(3, int((minutes - 30) // 25)))
-        work = max(10, min(20, int((minutes - 30) / n - 5)))
-        return "Tempo", (
-            f"{_fmt_h(hours)} gesamt: 15 min einfahren, {n} × {work} min Tempo bei "
-            f"{_watts(ftp, 0.76, 0.88)} mit 5 min locker dazwischen, Rest Z2."
-        )
-    if kind == "sweetspot":
-        n = max(2, min(4, int((minutes - 30) // 17)))
-        work = 12 if minutes < 90 else 15
-        return "Sweet Spot", (
-            f"{_fmt_h(hours)} gesamt: 15 min einfahren, {n} × {work} min bei "
-            f"{_watts(ftp, 0.88, 0.93)} mit 4 min locker dazwischen, Rest Z2."
-        )
-    if kind == "threshold":
-        n = max(3, min(5, int((minutes - 30) // 13)))
-        return "Schwelle", (
-            f"{_fmt_h(hours)} gesamt: 15 min einfahren, {n} × 8 min bei "
-            f"{_watts(ftp, 0.95, 1.05)} mit 4 min locker dazwischen, Rest Z2."
-        )
-    if kind == "vo2":
-        n = max(4, min(6, int((minutes - 30) // 8)))
-        return "VO2max", (
-            f"{_fmt_h(hours)} gesamt: 15 min einfahren, {n} × 4 min bei "
-            f"{_watts(ftp, 1.06, 1.2)} mit 4 min locker dazwischen, Rest Z2."
-        )
-    return "Ruhetag", "Kein Training. Erholung ist Teil des Plans."
-
-
 def _event_text(ev: PlanEvent, day: date, km: float) -> str:
     parts = ["Hauptevent" if ev.main else "Nebenevent"]
     if ev.days > 1:
@@ -270,12 +194,20 @@ def _round_hours(h: float) -> float:
     return round(h * 4) / 4  # auf 15 min
 
 
-def _make(day: date, kind: str, hours: float, ftp: int | None) -> Workout:
+def _make(
+    day: date,
+    kind: str,
+    hours: float,
+    ftp: int | None,
+    variant: int = 0,
+    lthr: int | None = None,
+    level: int = 0,
+) -> Workout:
     hours = _round_hours(hours)
     if kind == "rest" or hours <= 0:
         title, text = describe("rest", 0, ftp)
         return Workout(day, "rest", title, 0, 0, text)
-    title, text = describe(kind, hours, ftp)
+    title, text = describe(kind, hours, ftp, variant, lthr, level)
     return Workout(day, kind, title, hours, round(hours * TSS_PER_HOUR[kind]), text)
 
 
@@ -290,6 +222,77 @@ def quality_sessions(phase: Phase, ultra: bool) -> list[str]:
     return []
 
 
+# Ergänzungstraining: wie oft Rumpf-Stabi je Phase
+CORE_PER_WEEK = {
+    Phase.BASE: 2,
+    Phase.BUILD: 2,
+    Phase.SPECIFIC: 1,
+    Phase.DELOAD: 2,
+    Phase.TAPER: 1,
+    Phase.EVENT: 0,
+    Phase.RECOVERY: 1,
+}
+CORE_HOURS = 0.25
+RUN_START_HOURS, RUN_MAX_HOURS = 0.5, 0.75
+ROW_MAX_HOURS = 1.0
+DEFAULT_OPTIONS = {"row": True, "run": True, "core": True}
+
+
+@dataclass
+class WeekContext:
+    """Was der Planer über die Woche hinaus weiß: Wochennummer für den Wechsel der
+    Varianten und die Zahl bisher geplanter Läufe für den langsamen Laufaufbau."""
+
+    index: int = 0
+    runs: int = 0
+    options: dict[str, bool] = field(default_factory=lambda: dict(DEFAULT_OPTIONS))
+    lthr: int | None = None
+    base_phase: Phase | None = None  # Phase hinter einer Entlastungswoche
+
+
+def cross_training(phase: Phase, ctx: WeekContext) -> str | None:
+    """Welche Ergänzungseinheit ersetzt in dieser Woche eine Grundlage unter der Woche?
+
+    - Grundlage: jede Woche, Rudern und Laufen im Wechsel
+    - Aufbau: jede zweite Woche, bevorzugt Laufen (Knochenreiz bleibt erhalten)
+    - Entlastung und Regeneration: Rudern (gelenkschonend, entlastet den Sattel)
+    - Spezifisch, Tapering, Event: nur Rad – jetzt zählt die Spezifität
+    """
+    row, run = ctx.options.get("row"), ctx.options.get("run")
+    if phase == Phase.BASE:
+        if row and run:
+            return "run" if ctx.index % 2 == 0 else "row"
+        return "run" if run else "row" if row else None
+    if phase == Phase.BUILD and ctx.index % 2 == 0:
+        return "run" if run else "row" if row else None
+    if phase == Phase.DELOAD and ctx.base_phase == Phase.SPECIFIC:
+        return None
+    if phase in (Phase.DELOAD, Phase.RECOVERY):
+        return "row" if row else "run" if run and phase == Phase.DELOAD else None
+    return None
+
+
+def variant_for(kind: str, phase: Phase, ctx: WeekContext, day: date, used: set[str]) -> int:
+    """Wählt die Variante einer Einheit, damit sich die Wochen unterscheiden.
+
+    Pro Woche gibt es höchstens eine besondere Grundlage (Trittfrequenz oder
+    Kraftausdauer); in leichten Phasen bleibt alles schlicht. Die lange Fahrt
+    wechselt in der Grundlage zwischen ruhig und mit Tempo-Abschnitt, vor dem
+    Event wird sie zum Ausrüstungs- und Verpflegungstest.
+    """
+    if phase in (Phase.TAPER, Phase.EVENT, Phase.RECOVERY, Phase.DELOAD):
+        return 0
+    if kind == "endurance":
+        return 0 if "endurance" in used else ctx.index % 3
+    if kind == "long":
+        if phase == Phase.SPECIFIC:
+            return 2 if day.weekday() == 5 else 0
+        if phase == Phase.BASE:
+            return ctx.index % 2
+        return ctx.index % 3
+    return ctx.index
+
+
 def distribute_week(
     week_days: list[date],
     target_tss: float,
@@ -298,9 +301,12 @@ def distribute_week(
     ftp: int | None,
     ultra: bool,
     fixed: dict[date, Workout],
+    ctx: WeekContext | None = None,
 ) -> list[Workout]:
     """Verteilt das Wochenziel auf die Tage. ``fixed`` enthält bereits feste Tage
-    (Events, Vorbelastung, Erholung)."""
+    (Events, Vorbelastung, Erholung). Ergebnis: eine Haupteinheit je Tag plus
+    eventuelle Zusatzeinheiten (Rumpf-Stabi)."""
+    ctx = ctx or WeekContext()
     free = [d for d in week_days if d not in fixed and availability.get(d.weekday(), 0) > 0]
     remaining = target_tss - sum(w.tss for w in fixed.values())
     plan: dict[date, Workout] = dict(fixed)
@@ -314,6 +320,7 @@ def distribute_week(
         by_hours = sorted(free, key=lambda d: (-availability[d.weekday()], d))
         weekend = [d for d in free if d.weekday() >= 5]
         # Lange Fahrt nur am Wochenende; ist es durch Events belegt, entfällt sie
+        long_day = None
         if weekend:
             long_day = max(weekend, key=lambda d: availability[d.weekday()])
             kinds[long_day] = "endurance" if easy else "long"
@@ -330,26 +337,84 @@ def distribute_week(
                 if qualities
                 else ("recovery" if phase == Phase.RECOVERY else "endurance")
             )
+        # Eine Grundlage unter der Woche wird zu Rudern oder Laufen
+        cross = cross_training(phase, ctx)
+        easy_weekdays = [
+            d for d in sorted(free) if d.weekday() < 5 and kinds.get(d) in ("endurance", "recovery")
+        ]
+        if cross and easy_weekdays:
+            kinds[easy_weekdays[0]] = cross
 
     # Dauer: verfügbare Zeit, skaliert auf das Wochenziel
     full = {d: availability[d.weekday()] for d in free}
     capacity = sum(full[d] * TSS_PER_HOUR[kinds[d]] for d in free)
     scale = min(1.0, max(0.0, remaining) / capacity) if capacity else 0
-    for d in free:
+    special_used: set[str] = set()
+    for d in sorted(free):
+        kind = kinds[d]
         hours = full[d] * scale
-        min_hours = 0.75 if kinds[d] in ("tempo", "sweetspot", "threshold", "vo2") else 0.5
+        if kind == "run":
+            hours = min(
+                full[d],
+                max(RUN_START_HOURS, min(hours, RUN_START_HOURS + 0.05 * ctx.runs, RUN_MAX_HOURS)),
+            )
+        elif kind == "row":
+            hours = min(full[d], max(0.5, min(hours, ROW_MAX_HOURS)))
+        min_hours = 0.75 if kind in ("tempo", "sweetspot", "threshold", "vo2") else 0.5
         if hours < min_hours:
             # zu kurz für die geplante Einheit: lockere Einheit oder Ruhetag
             hours = min_hours if scale > 0.25 and full[d] >= min_hours else 0
             kind = "endurance" if hours else "rest"
-        else:
-            kind = kinds[d]
-        plan[d] = _make(d, kind, hours, ftp)
+        plan[d] = _make(
+            d, kind, hours, ftp, variant_for(kind, phase, ctx, d, special_used), ctx.lthr, ctx.runs
+        )
+        if kind == "endurance" and plan[d].title != "Grundlage":
+            special_used.add("endurance")
+        if kind == "run":
+            ctx.runs += 1
 
-    # Tapering: Vorbelastung am letzten Tag vor dem Hauptevent wird separat gesetzt
+    # Rumpf-Stabi als Zusatzeinheit an lockeren Tagen mit Zeit dafür
+    extras: list[Workout] = []
+    if ctx.options.get("core"):
+        wanted = CORE_PER_WEEK.get(phase, 0)
+        preference = {
+            "recovery": 0,
+            "row": 1,
+            "endurance": 2,
+            "run": 3,
+            "tempo": 4,
+            "sweetspot": 5,
+            "threshold": 6,
+            "vo2": 7,
+        }
+        # unter der Woche vor dem Wochenende, lockere und kurze Tage zuerst
+        candidates = sorted(
+            (d for d in free if plan[d].kind in preference),
+            key=lambda d: (d.weekday() >= 5, preference[plan[d].kind], plan[d].hours),
+        )
+        # mit mindestens einem Tag Abstand, damit der Rumpf sich erholen kann
+        chosen: list[date] = []
+        for d in candidates:
+            if len(chosen) < wanted and all(abs((d - c).days) > 1 for c in chosen):
+                chosen.append(d)
+        if len(chosen) < wanted:
+            chosen += [d for d in candidates if d not in chosen][: wanted - len(chosen)]
+        for k, d in enumerate(sorted(chosen)):
+            main = plan[d]
+            room = full[d] - main.hours
+            if room < CORE_HOURS:
+                if main.hours - CORE_HOURS < 0.5 or main.kind not in BIKE_KINDS | {"row"}:
+                    continue
+                plan[d] = _make(
+                    d, main.kind, main.hours - CORE_HOURS, ftp, ctx.index, ctx.lthr, ctx.runs
+                )
+            # A/B/C im Wechsel; in leichten Phasen zuerst Mobilität
+            core_variant = 3 if easy and k == 0 else (ctx.index * 2 + k) % 3
+            extras.append(_make(d, "core", CORE_HOURS, ftp, core_variant))
+
     for d in week_days:
         plan.setdefault(d, _make(d, "rest", 0, ftp))
-    return [plan[d] for d in week_days]
+    return [plan[d] for d in week_days] + extras
 
 
 # ---------------------------------------------------------------------------------
@@ -365,8 +430,11 @@ def build_plan(
     events: list[PlanEvent],
     availability: dict[int, float],
     actual_tss_this_week: dict[date, float] | None = None,
+    options: dict[str, bool] | None = None,
+    lthr: int | None = None,
 ) -> Plan:
-    """Erstellt den Plan ab ``today`` bis zwei Wochen nach dem letzten Hauptevent."""
+    """Erstellt den Plan ab ``today`` bis zwei Wochen nach dem letzten Hauptevent.
+    ``options`` schaltet Ergänzungstraining (row, run, core) ein oder aus."""
     events = sorted([e for e in events if e.end >= today], key=lambda e: e.start)
     main = [e for e in events if e.main][:3]
     side = [e for e in events if not e.main]
@@ -380,6 +448,7 @@ def build_plan(
     actual_tss_this_week = actual_tss_this_week or {}
 
     week_start = _monday(today)
+    ctx = WeekContext(options={**DEFAULT_OPTIONS, **(options or {})}, lthr=lthr)
     loading_weeks = 0
     sim_ctl, sim_atl = ctl, atl
     projection: list[dict] = []
@@ -486,7 +555,9 @@ def build_plan(
             target = sum(w.tss for w in fixed.values()) + maintenance * 0.35
 
         ultra = bool(ref_event and ref_event.is_ultra)
-        week_workouts = distribute_week(days, target, phase, availability, ftp, ultra, fixed)
+        ctx.index = len(plan.weeks)
+        ctx.base_phase = base_phase
+        week_workouts = distribute_week(days, target, phase, availability, ftp, ultra, fixed, ctx)
         week_workouts = [w for w in week_workouts if w.day >= today]
 
         pw = PlanWeek(
@@ -506,7 +577,9 @@ def build_plan(
         plan.workouts.extend(week_workouts)
 
         # Prognose fortschreiben
-        by_day = {w.day: w.tss for w in week_workouts}
+        by_day: dict[date, float] = {}
+        for w in week_workouts:
+            by_day[w.day] = by_day.get(w.day, 0) + w.tss
         for d in days:
             if d < today:
                 continue

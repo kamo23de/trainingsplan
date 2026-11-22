@@ -8,13 +8,14 @@ from sqlalchemy.orm import Session
 
 from trainingsplan.analytics.dashboard import fitness_series, load_frame
 from trainingsplan.analytics.thresholds import manual_thresholds
-from trainingsplan.planning.planner import Plan, PlanEvent, build_plan
+from trainingsplan.planning.planner import DEFAULT_OPTIONS, Plan, PlanEvent, build_plan
 from trainingsplan.storage.models import (
     DEFAULT_AVAILABILITY,
     Activity,
     Availability,
     Event,
     EventPriority,
+    TrainingOption,
 )
 
 MAX_MAIN_EVENTS = 3
@@ -37,6 +38,27 @@ def set_availability(db: Session, hours: dict[int, float]) -> dict[int, float]:
         db.merge(Availability(weekday=weekday, hours=max(0.0, min(16.0, value))))
     db.commit()
     return get_availability(db)
+
+
+def get_options(db: Session) -> dict[str, bool]:
+    stored = {o.key: o.enabled for o in db.scalars(select(TrainingOption))}
+    return {key: stored.get(key, default) for key, default in DEFAULT_OPTIONS.items()}
+
+
+def set_options(db: Session, options: dict[str, bool]) -> dict[str, bool]:
+    for key, enabled in options.items():
+        if key in DEFAULT_OPTIONS:
+            db.merge(TrainingOption(key=key, enabled=bool(enabled)))
+    db.commit()
+    return get_options(db)
+
+
+def current_lthr(db: Session, df: pl.DataFrame, today: date) -> int | None:
+    manual = manual_thresholds(db, today).lthr_bpm
+    if manual:
+        return manual
+    known = df.filter(pl.col("file_lthr_bpm").is_not_null())
+    return int(known.sort("start_time")["file_lthr_bpm"][-1]) if len(known) else None
 
 
 def to_plan_event(e: Event) -> PlanEvent:
@@ -83,7 +105,17 @@ def compute_plan(db: Session, today: date | None = None) -> tuple[Plan, dict]:
 
     events = [to_plan_event(e) for e in db.scalars(select(Event).order_by(Event.start_date))]
     ftp = current_ftp(db, df, today)
-    plan = build_plan(plan_start, ctl, atl, ftp, events, get_availability(db), actual)
+    plan = build_plan(
+        plan_start,
+        ctl,
+        atl,
+        ftp,
+        events,
+        get_availability(db),
+        actual,
+        options=get_options(db),
+        lthr=current_lthr(db, df, today),
+    )
     context = {
         "today": today.isoformat(),
         "plan_start": plan_start.isoformat(),

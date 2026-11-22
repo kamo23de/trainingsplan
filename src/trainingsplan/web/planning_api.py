@@ -13,7 +13,9 @@ from trainingsplan.planning.service import (
     calendar,
     compute_plan,
     get_availability,
+    get_options,
     set_availability,
+    set_options,
 )
 from trainingsplan.storage.db import session_scope
 from trainingsplan.storage.models import Event, EventPriority
@@ -135,3 +137,28 @@ def read_calendar(
     if end < start or (end - start).days > 62:
         raise HTTPException(status_code=422, detail="Zeitraum ungültig (max. 62 Tage)")
     return calendar(db, start, end)
+
+
+OPTION_LABELS = {
+    "row": "Indoor-Rudern",
+    "run": "Laufen",
+    "core": "Rumpf-Stabi",
+}
+
+
+@router.get("/options")
+def read_options(db: DbSession) -> dict:
+    values = get_options(db)
+    return {
+        "options": [{"key": k, "label": OPTION_LABELS[k], "enabled": v} for k, v in values.items()]
+    }
+
+
+class OptionsIn(BaseModel):
+    options: dict[Literal["row", "run", "core"], bool]
+
+
+@router.put("/options")
+def write_options(data: OptionsIn, db: DbSession) -> dict:
+    set_options(db, dict(data.options))
+    return read_options(db)

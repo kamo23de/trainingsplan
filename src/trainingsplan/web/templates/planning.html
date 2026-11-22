@@ -24,6 +24,10 @@
     </div>
     <p class="sub">Maximale Trainingszeit je Wochentag in Stunden</p>
     <form id="availability-form" class="availability"></form>
+
+    <h2 class="sub-head">Ergänzungstraining <button class="info-btn" data-info="cross_training" aria-label="Erklärung">i</button></h2>
+    <p class="sub">Wird abwechselnd in den Plan eingebaut – vor allem im Winter und in Entlastungswochen.</p>
+    <form id="options-form" class="options"></form>
   </article>
 
   <article class="card wide">
@@ -55,7 +59,8 @@
   <h3 class="cal-month" id="cal-month"></h3>
   <div class="cal-legend">
     <span><i class="lg lg-done"></i>absolviert</span>
-    <span><i class="lg lg-plan"></i>geplant</span>
+    <span><i class="lg lg-plan"></i>geplant (dunkler = intensiver)</span>
+    <span><i class="lg lg-cross"></i>Ergänzung</span>
     <span><i class="lg lg-main"></i>Hauptevent</span>
     <span><i class="lg lg-side"></i>Nebenevent</span>
   </div>
