@@ -22,3 +22,10 @@ def test_summary_empty():
         data = client.get("/api/summary").json()
     assert data["activities"] == 0
     assert data["distance_km"] == 0
+
+
+def test_static_assets_have_cache_busting_version():
+    with TestClient(app) as client:
+        html = client.get("/").text
+        assert "/static/dashboard.js?v=" in html
+        assert client.get("/static/info.js").status_code == 200

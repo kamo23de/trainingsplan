@@ -71,7 +71,7 @@
 </dialog>
 {% endblock %}
 {% block scripts %}
-<script src="/static/vendor/echarts.min.js"></script>
-<script src="/static/info.js"></script>
-<script src="/static/dashboard.js"></script>
+<script src="{{ static_url('vendor/echarts.min.js') }}"></script>
+<script src="{{ static_url('info.js') }}"></script>
+<script src="{{ static_url('dashboard.js') }}"></script>
 {% endblock %}

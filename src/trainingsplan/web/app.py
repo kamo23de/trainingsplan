@@ -18,7 +18,18 @@ from trainingsplan.storage.models import Activity
 
 DbSession = Annotated[Session, Depends(session_scope)]
 
+STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+
+def static_url(path: str) -> str:
+    """URL mit Änderungszeit als Parameter, damit der Browser nach Updates neu lädt."""
+    file = STATIC_DIR / path
+    version = int(file.stat().st_mtime) if file.exists() else 0
+    return f"/static/{path}?v={version}"
+
+
+TEMPLATES.env.globals["static_url"] = static_url
 
 
 @asynccontextmanager
@@ -28,7 +39,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Trainingsplan", version=__version__, lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 RangeKey = Annotated[str, Query(pattern="^(" + "|".join([*RANGES, "all"]) + ")$")]
 
