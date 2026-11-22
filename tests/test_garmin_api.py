@@ -41,3 +41,55 @@ def test_download_extracts_fit_from_zip(monkeypatch):
 def test_records_accepts_wrapped_payload():
     assert garmin_api._records({"activityList": [{"activityId": 1}]}) == [{"activityId": 1}]
     assert garmin_api._records(None) == []
+
+
+def _http_error(status):
+    return garmin_api.HttpError(status_code=status, method="GET", url="u", response_text="")
+
+
+def test_retry_on_gateway_timeout(monkeypatch):
+    monkeypatch.setattr(garmin_api, "PAUSE_S", 0)
+    monkeypatch.setattr(garmin_api, "RETRY_DELAYS_S", (0, 0))
+    client = FakeClient(total=1)
+    original = client.download_activity
+    failures = iter([_http_error(504)])
+
+    def flaky(activity_id):
+        for exc in failures:
+            raise exc
+        return original(activity_id)
+
+    client.download_activity = flaky
+    assert len(garmin_api.download_fit_files(client, 7)) == 1
+
+
+def test_no_retry_on_not_found(monkeypatch):
+    import pytest
+
+    monkeypatch.setattr(garmin_api, "RETRY_DELAYS_S", (0, 0))
+    calls = []
+
+    class Missing(FakeClient):
+        def download_activity(self, activity_id):
+            calls.append(activity_id)
+            raise _http_error(404)
+
+    with pytest.raises(garmin_api.HttpError):
+        garmin_api.download_fit_files(Missing(total=1), 7)
+    assert calls == [7]
+
+
+def test_gives_up_after_retries(monkeypatch):
+    import pytest
+
+    monkeypatch.setattr(garmin_api, "RETRY_DELAYS_S", (0, 0))
+    calls = []
+
+    class Down(FakeClient):
+        def download_activity(self, activity_id):
+            calls.append(activity_id)
+            raise _http_error(504)
+
+    with pytest.raises(garmin_api.HttpError):
+        garmin_api.download_fit_files(Down(total=1), 7)
+    assert len(calls) == 3
