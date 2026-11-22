@@ -258,4 +258,18 @@ window.TP_INFO = {
         <tr><td>Regeneration</td><td>1–2 Wochen nach dem Hauptevent sehr wenig Belastung</td></tr>
       </table>`,
   },
+  season: {
+    title: "Saisonübersicht",
+    body: `<p>Die ganze Saison auf einen Blick: Phasen, Entlastungswochen (E), Events und
+      die prognostizierte Fitness (CTL) bis nach dem letzten Hauptevent.</p>
+      <p><b>Events verschieben:</b> ein Event mit der Maus nach links oder rechts ziehen.
+      Beim Loslassen wird das neue Datum gespeichert und der ganze Plan neu berechnet –
+      Phasen, Entlastungswochen, Kalender und Prognose passen sich an. Mit der
+      Tastatur: Event anwählen (Tab), Pfeiltasten verschieben um einen Tag, mit
+      Umschalt um eine Woche. Ein Klick ohne Ziehen öffnet das Event zum Bearbeiten.</p>
+      <p><b>Entlastung und Nebenevents:</b> Fällt eine Entlastungswoche auf ein
+      Nebenevent ab 150 km, wird sie um eine Woche nach hinten verschoben (↷). Das
+      Event ist dann die Schlüsseleinheit, die Entlastung folgt direkt danach.</p>
+      <p>Ein Klick auf eine Phase oder Woche zeigt den Monat im Kalender.</p>`,
+  },
 };

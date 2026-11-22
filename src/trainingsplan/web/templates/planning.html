@@ -34,7 +34,16 @@
   </article>
 </section>
 
-<section class="card calendar-card">
+<section class="card season-card">
+  <div class="card-head">
+    <h2>Saisonübersicht <button class="info-btn" data-info="season" aria-label="Erklärung">i</button></h2>
+    <span class="sub season-hint">Events mit der Maus verschieben – der Plan rechnet sofort neu</span>
+  </div>
+  <div class="season-scroll"><div class="season" id="season"></div></div>
+  <p class="season-status" id="season-status" role="status" aria-live="polite"></p>
+</section>
+
+<section class="card calendar-card" id="calendar-section">
   <div class="card-head">
     <h2>Kalender <button class="info-btn" data-info="calendar" aria-label="Erklärung">i</button></h2>
     <div class="actions">

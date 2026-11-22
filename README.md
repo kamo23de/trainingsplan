@@ -78,6 +78,13 @@ Die Wochenbelastung ergibt sich aus der aktuellen Fitness (CTL) und der gewünsc
 Steigerung je Phase, begrenzt durch die verfügbare Zeit je Wochentag. Jede Einheit hat
 konkrete Vorgaben mit Wattbereichen auf Basis der aktuellen FTP.
 
+Fällt eine Entlastungswoche auf ein Nebenevent ab 150 km, wird sie um eine Woche nach
+hinten verschoben – das Event ist dann die Schlüsseleinheit der Woche.
+
+Die **Saisonübersicht** zeigt Phasen, Entlastungswochen, Events und die prognostizierte
+Fitness als Zeitstrahl. Events lassen sich dort mit der Maus (oder per Pfeiltasten)
+verschieben; der Plan wird sofort neu berechnet.
+
 Der Plan wird nicht gespeichert, sondern bei jedem Aufruf neu berechnet. Neue Aktivitäten,
 geänderte Events oder Verfügbarkeiten wirken sich daher sofort aus.
 

@@ -139,3 +139,25 @@ def test_availability_roundtrip(client):
     assert [d["label"] for d in data["days"]] == ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
     r = client.put("/api/availability", json={"hours": [0, 1, 1, 1, 0, 5, 4]})
     assert [d["hours"] for d in r.json()["days"]] == [0, 1, 1, 1, 0, 5, 4]
+
+
+def test_deload_moves_away_from_key_side_event():
+    base = plan_for([ultra()])
+    deloads = [w.start for w in base.weeks if w.phase == Phase.DELOAD]
+    # Ein Brevet genau in eine Entlastungswoche legen
+    week = deloads[2]
+    brevet = PlanEvent(9, "Brevet 400", week + timedelta(days=5), 1, False, 400)
+    plan = plan_for([ultra(), brevet])
+    by_start = {w.start: w for w in plan.weeks}
+    assert by_start[week].phase != Phase.DELOAD
+    assert "verschoben" in by_start[week].note
+    assert by_start[week + timedelta(weeks=1)].phase == Phase.DELOAD
+    assert by_start[week].base_phase in (Phase.BASE, Phase.BUILD, Phase.SPECIFIC)
+
+
+def test_short_side_event_does_not_move_deload():
+    base = plan_for([ultra()])
+    week = [w.start for w in base.weeks if w.phase == Phase.DELOAD][1]
+    ride = PlanEvent(9, "RTF 100", week + timedelta(days=6), 1, False, 100)
+    plan = plan_for([ultra(), ride])
+    assert {w.start: w for w in plan.weeks}[week].phase == Phase.DELOAD
