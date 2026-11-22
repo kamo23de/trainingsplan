@@ -154,11 +154,15 @@ def sync(
                 activity_id = summary.get("activityId")
                 if activity_id is None:
                     continue
-                if db.scalar(
-                    select(Activity.id).where(
+                name = summary.get("activityName")
+                existing = db.scalar(
+                    select(Activity).where(
                         Activity.source == "garmin_api", Activity.source_id == str(activity_id)
                     )
-                ):
+                )
+                if existing:
+                    if name and not existing.name:
+                        existing.name = name  # Namen nachtragen, ohne erneuten Download
                     stats.add(Outcome.DUPLICATE)
                     continue
                 try:
@@ -171,6 +175,7 @@ def sync(
                                 source="garmin_api",
                                 source_id=str(activity_id),
                                 cutoff=cutoff,
+                                name=name,
                             )
                         )
                 except Exception as exc:

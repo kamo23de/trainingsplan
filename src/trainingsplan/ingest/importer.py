@@ -56,6 +56,7 @@ def import_fit(
     source: str,
     source_id: str,
     cutoff: datetime | None = None,
+    name: str | None = None,
 ) -> Outcome:
     digest = hashlib.sha256(data).hexdigest()
     if db.scalar(select(Activity.id).where(Activity.content_hash == digest)):
@@ -74,6 +75,7 @@ def import_fit(
 
     raw_rel = _store_raw(settings, data, start, parsed.sport)
     activity = _to_activity(parsed, start, source, source_id, digest, raw_rel)
+    activity.name = name
     apply_load(db, activity)
     db.add(activity)
     db.flush()
