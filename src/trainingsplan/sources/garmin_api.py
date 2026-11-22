@@ -1,72 +1,76 @@
-"""Garmin Connect Personal API – laufende Synchronisierung neuer Aktivitäten.
+"""Garmin Connect Personal API – Aktivitäten abrufen.
 
-Ablauf laut Garmin-Dokumentation:
-1. Personal API Key in Garmin Connect Web erstellen (wird nur einmal angezeigt).
-2. Key gegen ein Access Token tauschen (gültig 24 h, keine Refresh Tokens).
-3. Mit dem Token die Connect-APIs abfragen.
-
-Die konkreten Endpunkte für Aktivitäten und FIT-Downloads werden im nächsten
-Schritt anhand der Swagger-Dokumentation der Personal API ergänzt.
+Nutzt Garmins offiziellen Python-Client (``garmin-connect-personal-api-python``).
+Der API Key kommt aus unserem Schlüsselbund-Eintrag bzw. ``TP_GARMIN_API_KEY``;
+der Client tauscht ihn gegen ein Access Token (24 h gültig) und speichert dieses
+zwischen.
 """
 
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+import io
+import time
+import zipfile
+from collections.abc import Iterator
+from datetime import date
+from typing import Any
 
-import httpx
+from garmin_personal_api import GarminPersonalApiClient, PersonalApiAuthenticator
 
 from trainingsplan.credentials import get_garmin_api_key
 
-TOKEN_URL = (
-    "https://personal.connectapi.garmin.com/personalapitoken-service/"
-    "personal-api/personal-api-key/token"
-)
+PAGE_SIZE = 100
+PAUSE_S = 0.3  # schont die API bei großen Abrufen
 
 
 class GarminAuthError(RuntimeError):
     pass
 
 
-@dataclass
-class AccessToken:
-    value: str
-    expires_at: datetime
-
-    @property
-    def is_valid(self) -> bool:
-        return datetime.now(UTC) < self.expires_at - timedelta(minutes=5)
-
-
-class GarminPersonalClient:
-    def __init__(self, api_key: str | None = None, http: httpx.Client | None = None) -> None:
-        self._api_key = api_key or get_garmin_api_key()
-        if not self._api_key:
-            raise GarminAuthError(
-                "Kein Garmin API Key gefunden. Mit `trainingsplan garmin-key` hinterlegen."
-            )
-        self._http = http or httpx.Client(timeout=30)
-        self._token: AccessToken | None = None
-
-    def access_token(self) -> str:
-        if self._token is None or not self._token.is_valid:
-            self._token = self._fetch_token()
-        return self._token.value
-
-    def _fetch_token(self) -> AccessToken:
-        response = self._http.post(TOKEN_URL, headers={"Authorization": f"ApiKey {self._api_key}"})
-        if response.status_code in (401, 403):
-            raise GarminAuthError("Garmin hat den API Key abgelehnt (abgelaufen oder gelöscht?)")
-        response.raise_for_status()
-        payload = response.json()
-        expires_in = int(payload.get("expires_in", 24 * 3600))
-        return AccessToken(
-            value=payload["access_token"],
-            expires_at=datetime.now(UTC) + timedelta(seconds=expires_in),
+def open_client() -> GarminPersonalApiClient:
+    api_key = get_garmin_api_key()
+    if not api_key:
+        raise GarminAuthError(
+            "Kein Garmin API Key gefunden. Mit `trainingsplan garmin-key` hinterlegen."
         )
+    with PersonalApiAuthenticator() as authenticator:
+        token = authenticator.obtain_token(api_key)
+    return GarminPersonalApiClient(token.access_token)
 
-    def list_activities(self, since: datetime) -> list[dict]:
-        """TODO: Aktivitätsliste ab ``since`` abrufen (Endpunkt aus Swagger-Doku)."""
-        raise NotImplementedError
 
-    def download_fit(self, activity_id: str) -> bytes:
-        """TODO: FIT-Datei einer Aktivität herunterladen."""
-        raise NotImplementedError
+def _records(payload: Any) -> list[dict]:
+    if isinstance(payload, list):
+        return [r for r in payload if isinstance(r, dict)]
+    if isinstance(payload, dict):
+        for key in ("activities", "activityList"):
+            if isinstance(payload.get(key), list):
+                return [r for r in payload[key] if isinstance(r, dict)]
+    return []
+
+
+def iter_activities(client, start_date: date, end_date: date) -> Iterator[dict]:
+    """Alle Aktivitäts-Zusammenfassungen im Zeitraum, seitenweise abgerufen."""
+    start = 0
+    while True:
+        page = _records(
+            client.search_activities(
+                start=start, limit=PAGE_SIZE, start_date=start_date, end_date=end_date
+            )
+        )
+        yield from page
+        if len(page) < PAGE_SIZE:
+            return
+        start += PAGE_SIZE
+        time.sleep(PAUSE_S)
+
+
+def download_fit_files(client, activity_id: int | str) -> list[tuple[str, bytes]]:
+    """Lädt die Originaldatei (ZIP) und gibt die enthaltenen FIT-Dateien zurück."""
+    content = client.download_activity(activity_id)
+    time.sleep(PAUSE_S)
+    if content[:4] != b"PK\x03\x04":  # kein ZIP, vermutlich direkt FIT
+        return [(f"{activity_id}.fit", content)]
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        return [
+            (info.filename, archive.read(info))
+            for info in archive.infolist()
+            if info.filename.lower().endswith(".fit")
+        ]

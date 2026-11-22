@@ -15,6 +15,7 @@ dependencies = [
     "polars>=1.15",
     "keyring>=25.5",
     "typer>=0.15",
+    "garmin-connect-personal-api-python>=1.1.0",
 ]
 
 [project.scripts]
@@ -35,6 +36,7 @@ packages = ["src/trainingsplan"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 
 [tool.ruff]
 line-length = 100
@@ -42,3 +44,6 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Argument", "typer.Option", "fastapi.Depends"]

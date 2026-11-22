@@ -66,7 +66,13 @@ class Activity(Base):
     intensity_factor: Mapped[float | None] = mapped_column(Float)
     tss: Mapped[float | None] = mapped_column(Float)
 
+    # Werte, die das Gerät zum Zeitpunkt der Aufzeichnung in der FIT-Datei hinterlegt hat
+    file_ftp_w: Mapped[int | None] = mapped_column(Integer)
+    file_lthr_bpm: Mapped[int | None] = mapped_column(Integer)
+    device_tss: Mapped[float | None] = mapped_column(Float)  # vom Gerät berechnet, zum Vergleich
+
     raw_file: Mapped[str | None] = mapped_column(Text)  # Pfad relativ zu data_dir
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True)  # SHA-256 der FIT-Datei
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, onupdate=_now

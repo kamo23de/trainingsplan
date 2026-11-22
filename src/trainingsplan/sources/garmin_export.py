@@ -19,7 +19,18 @@ class FitSource:
 
 
 def iter_fit_files(root: Path) -> Iterator[FitSource]:
-    """Liefert alle FIT-Dateien unterhalb von ``root`` (auch aus ZIP-Archiven)."""
+    """Liefert alle FIT-Dateien unterhalb von ``root`` (auch aus ZIP-Archiven).
+
+    ``root`` darf ein Ordner (entpackter Export) oder direkt die Export-ZIP sein.
+    """
+    if not root.exists():
+        raise FileNotFoundError(f"Pfad nicht gefunden: {root}")
+    if root.is_file():
+        if root.suffix.lower() == ".zip":
+            yield from _iter_zip(root, prefix=root.name)
+        elif root.suffix.lower() == ".fit":
+            yield FitSource(name=root.name, data=root.read_bytes())
+        return
     for path in sorted(root.rglob("*")):
         suffix = path.suffix.lower()
         if suffix == ".fit":
