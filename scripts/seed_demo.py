@@ -48,15 +48,24 @@ def main(years: int = 4, seed: int = 7) -> None:
             if wd == 2 and winter and rnd.random() < 0.4:
                 extras.append(("Lauf", "running", "generic", rnd.uniform(0.5, 0.8), 10.5))
             if wd == 3 and winter and rnd.random() < 0.3:
-                extras.append(("Indoor-Rudern", "rowing", "indoor_rowing", rnd.uniform(0.5, 0.9), 12))
+                extras.append(
+                    ("Indoor-Rudern", "rowing", "indoor_rowing", rnd.uniform(0.5, 0.9), 12)
+                )
             if wd in (1, 4) and rnd.random() < 0.4:
                 extras.append(("Rumpf-Stabi", "training", "strength_training", 0.3, 0))
             for name, sport, sub, hours, speed in extras:
                 activity = Activity(
-                    source="demo", source_id=str(count), name=name,
-                    start_time=day + timedelta(hours=19), sport=sport, sub_sport=sub,
-                    is_ebike=False, moving_time_s=hours * 3600, elapsed_time_s=hours * 3600,
-                    distance_m=hours * speed * 1000, elevation_gain_m=0,
+                    source="demo",
+                    source_id=str(count),
+                    name=name,
+                    start_time=day + timedelta(hours=19),
+                    sport=sport,
+                    sub_sport=sub,
+                    is_ebike=False,
+                    moving_time_s=hours * 3600,
+                    elapsed_time_s=hours * 3600,
+                    distance_m=hours * speed * 1000,
+                    elevation_gain_m=0,
                     avg_hr_bpm=rnd.uniform(130, 150) if speed else 105,
                     file_lthr_bpm=165,
                     content_hash=hashlib.sha256(f"demo{count}".encode()).hexdigest(),
