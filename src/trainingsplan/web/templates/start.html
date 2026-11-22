@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Trainingsplan{% endblock %}
+{% block content %}
+<section class="start">
+  <p class="lead">Wähle, ob du auf dein bisheriges Training zurückblicken oder die kommenden
+    Wochen planen möchtest.</p>
+  <div class="start-grid">
+    <a class="start-card" href="/rueckblick">
+      <span class="start-kicker">Rückblick</span>
+      <h2>Trainingshistorie</h2>
+      <p>Umfänge, Fitness und Form der letzten Jahre, lange Fahrten und alle Aktivitäten im Detail.</p>
+      <dl class="start-facts" id="facts-history">
+        <div><dt>Aktivitäten (12 Monate)</dt><dd>–</dd></div>
+        <div><dt>Fitness heute (CTL)</dt><dd>–</dd></div>
+        <div><dt>Letzte Aktivität</dt><dd>–</dd></div>
+      </dl>
+      <span class="start-go">Zum Rückblick →</span>
+    </a>
+    <a class="start-card" href="/planung">
+      <span class="start-kicker">Planung</span>
+      <h2>Trainingsplanung</h2>
+      <p>Haupt- und Nebenevents festlegen und den daraus berechneten Plan im Kalender ansehen.</p>
+      <dl class="start-facts" id="facts-plan">
+        <div><dt>Nächstes Hauptevent</dt><dd>–</dd></div>
+        <div><dt>Phase diese Woche</dt><dd>–</dd></div>
+        <div><dt>Heute geplant</dt><dd>–</dd></div>
+      </dl>
+      <span class="start-go">Zur Planung →</span>
+    </a>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(async function () {
+  const nf0 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
+  const set = (id, values) => document.querySelectorAll(`#${id} dd`).forEach((dd, i) => { dd.textContent = values[i]; });
+  const fmt = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  try {
+    const d = await (await fetch("/api/dashboard?range=1y")).json();
+    const last = d.recent[0];
+    set("facts-history", [nf0.format(d.kpis.activities), d.current.ctl != null ? nf0.format(d.current.ctl) : "–",
+      last ? `${fmt(last.date.slice(0, 10))} · ${last.name || last.category}` : "–"]);
+  } catch (e) { /* Startseite bleibt ohne Zahlen nutzbar */ }
+  try {
+    const [plan, events] = await Promise.all([fetch("/api/plan").then((r) => r.json()), fetch("/api/events").then((r) => r.json())]);
+    const today = plan.context.today;
+    const main = events.filter((e) => e.priority === "A" && e.end_date >= today);
+    const next = main[0];
+    const days = next ? Math.round((new Date(next.start_date) - new Date(today)) / 86400000) : null;
+    const week = plan.weeks[0];
+    const todays = plan.workouts.find((w) => w.day === today);
+    set("facts-plan", [
+      next ? `${next.title} · in ${days} Tagen` : "noch keins angelegt",
+      week ? week.phase : "–",
+      plan.context.plan_start > today ? "heute schon trainiert"
+        : todays ? (todays.kind === "rest" ? "Ruhetag" : `${todays.title}, ${todays.hours.toLocaleString("de-DE")} h`) : "–",
+    ]);
+  } catch (e) { /* ignorieren */ }
+})();
+</script>
+{% endblock %}

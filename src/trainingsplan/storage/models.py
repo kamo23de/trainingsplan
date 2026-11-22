@@ -30,10 +30,9 @@ class LoadBasis(StrEnum):
     NONE = "none"  # keine ausreichenden Daten
 
 
-class GoalPriority(StrEnum):
-    A = "A"  # Saisonhöhepunkt
-    B = "B"  # wichtiges Zwischenziel
-    C = "C"  # Trainingswettkampf / Nebenziel
+class EventPriority(StrEnum):
+    MAIN = "A"  # Hauptevent: Saisonhöhepunkt, auf den der Plan hinarbeitet
+    SIDE = "B"  # Nebenevent: Aufbauevent, wird in den Plan integriert
 
 
 class Activity(Base):
@@ -94,17 +93,34 @@ class AthleteThreshold(Base):
     note: Mapped[str | None] = mapped_column(Text)
 
 
-class Goal(Base):
-    """Frei definierbares Ziel; veränderbar, ohne die Historie zu verlieren."""
+class Event(Base):
+    """Geplantes Event. Hauptevents (max. 3) bestimmen die Periodisierung,
+    Nebenevents werden als Aufbauevents in den Plan eingebaut."""
 
-    __tablename__ = "goal"
+    __tablename__ = "event"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
-    priority: Mapped[str] = mapped_column(String(1), default=GoalPriority.A)
-    event_date: Mapped[date | None] = mapped_column(Date)
+    start_date: Mapped[date] = mapped_column(Date, index=True)
+    days: Mapped[int] = mapped_column(Integer, default=1)  # Dauer in Tagen (Etappen/Ultra)
+    priority: Mapped[str] = mapped_column(String(1), default=EventPriority.SIDE)
     distance_km: Mapped[float | None] = mapped_column(Float)
     elevation_m: Mapped[float | None] = mapped_column(Float)
+    notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
+
+class Availability(Base):
+    """Verfügbare Trainingszeit je Wochentag (0 = Montag)."""
+
+    __tablename__ = "availability"
+
+    weekday: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hours: Mapped[float] = mapped_column(Float, default=0)
+
+
+# Startwerte: unter der Woche kurze Einheiten nach Feierabend, am Wochenende lange Fahrten
+DEFAULT_AVAILABILITY = {0: 0.0, 1: 1.5, 2: 1.0, 3: 1.5, 4: 0.0, 5: 6.0, 6: 3.5}

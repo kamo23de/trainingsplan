@@ -202,4 +202,60 @@ window.TP_INFO = {
       Schätzung der FTP – allerdings nur, wenn die 20 Minuten wirklich voll gefahren
       wurden.</p>`,
   },
+  events: {
+    title: "Haupt- und Nebenevents",
+    body: `<p><b>Hauptevents</b> (höchstens drei) sind deine Saisonhöhepunkte. Von ihnen aus
+      wird der Plan rückwärts aufgebaut: Grundlage → Aufbau → spezifische Phase →
+      Tapering. Nach jedem Hauptevent folgt Regeneration.</p>
+      <p><b>Nebenevents</b> sind Aufbauevents, z. B. Brevets oder Radmarathons. Sie
+      werden in den laufenden Plan eingebaut: Am Tag davor gibt es eine Vorbelastung
+      oder Ruhe, danach ein bis zwei Erholungstage. Ihre Belastung zählt zum
+      Wochenumfang.</p>
+      <p>Events lassen sich jederzeit ändern oder löschen – auch direkt im Kalender per
+      Klick. Der Plan wird danach sofort neu berechnet. Mehrtägige Events (z. B. ein
+      Ultra über 9 Tage) bekommen eine Dauer in Tagen.</p>`,
+  },
+  availability: {
+    title: "Verfügbare Zeit",
+    body: `<p>Die maximale Trainingszeit je Wochentag. Der Plan verteilt die Wochenbelastung
+      nur auf Tage mit verfügbarer Zeit; Tage mit 0 Stunden werden Ruhetage.</p>
+      <p>Der Tag mit der meisten Zeit am Wochenende wird zur langen Ausfahrt. In der
+      spezifischen Phase vor einem Ultra werden beide Wochenendtage lang
+      (Back-to-back), um mehrtägige Belastung zu üben.</p>
+      <p>Pendelfahrten mit dem eBike plant die App nicht ein, sie zählen aber über die
+      Herzfrequenz zur tatsächlichen Belastung.</p>`,
+  },
+  projection: {
+    title: "Prognose",
+    body: `<p>Die gestrichelten Linien zeigen, wie sich Fitness (CTL), Ermüdung (ATL) und
+      Form (TSB) entwickeln, wenn du den Plan so umsetzt. Senkrechte Linien markieren
+      deine Events.</p>
+      <p>Ziel ist eine stetig steigende Fitness und zum Start des Hauptevents eine
+      positive Form (etwa +10 bis +25). Während eines mehrtägigen Events fällt die
+      Form stark ins Negative – das ist erwartbar.</p>
+      <p>Die Prognose ist ein Modell. Sie wird mit jeder neuen Aktivität aus Garmin neu
+      berechnet und an das tatsächliche Training angepasst.</p>`,
+  },
+  calendar: {
+    title: "Kalender",
+    body: `<p><b>Absolvierte Aktivitäten</b> (mit farbigem Punkt) kommen aus Garmin – ein
+      Klick öffnet die Details. <b>Geplante Einheiten</b> sind nach Intensität
+      eingefärbt (hell = locker, dunkel = intensiv); ein Klick zeigt die genaue
+      Vorgabe mit Wattbereichen.</p>
+      <p>Die linke Spalte zeigt die Phase der Woche sowie geplante und tatsächliche
+      Stunden und Belastung. Mit „+“ an einem freien Tag legst du dort ein Nebenevent
+      an.</p>`,
+  },
+  phases: {
+    title: "Trainingsphasen",
+    body: `<table class="info-table">
+        <tr><td>Grundlage</td><td>viel Zeit in Z2, eine Tempo-Einheit pro Woche; Fitness steigt um ca. 3 CTL/Woche</td></tr>
+        <tr><td>Aufbau</td><td>Sweet Spot und Schwelle (bei Ultras) bzw. Schwelle und VO2max; ca. 4 CTL/Woche</td></tr>
+        <tr><td>Spezifisch</td><td>eventnah: bei Ultras lange Back-to-back-Wochenenden; ca. 2 CTL/Woche</td></tr>
+        <tr><td>Entlastung</td><td>jede 4. Woche ca. 60 % der Belastung, damit das Training wirkt</td></tr>
+        <tr><td>Tapering</td><td>1–2 Wochen (Ultra: 2) vor dem Hauptevent Umfang reduzieren, Form aufbauen</td></tr>
+        <tr><td>Event</td><td>Eventwoche mit Vorbelastung am Vortag</td></tr>
+        <tr><td>Regeneration</td><td>1–2 Wochen nach dem Hauptevent sehr wenig Belastung</td></tr>
+      </table>`,
+  },
 };

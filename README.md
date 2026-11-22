@@ -61,6 +61,26 @@ uv run pytest
 uv run ruff check .
 ```
 
+## Seiten
+
+- **Start** (`/`): Auswahl zwischen Rückblick und Planung mit den wichtigsten Eckdaten
+- **Rückblick** (`/rueckblick`): Dashboard der Trainingshistorie
+- **Planung** (`/planung`): Events, verfügbare Zeit, Prognose und Kalender
+
+## Trainingsplanung
+
+Bis zu drei **Hauptevents** bestimmen die Periodisierung, rückwärts gerechnet:
+Grundlage → Aufbau → Spezifisch → Tapering → Event → Regeneration, mit einer
+Entlastungswoche nach je drei Belastungswochen. **Nebenevents** (z. B. Brevets) werden als
+Aufbauevents eingebaut – mit Vorbelastung bzw. Ruhe davor und Erholung danach.
+
+Die Wochenbelastung ergibt sich aus der aktuellen Fitness (CTL) und der gewünschten
+Steigerung je Phase, begrenzt durch die verfügbare Zeit je Wochentag. Jede Einheit hat
+konkrete Vorgaben mit Wattbereichen auf Basis der aktuellen FTP.
+
+Der Plan wird nicht gespeichert, sondern bei jedem Aufruf neu berechnet. Neue Aktivitäten,
+geänderte Events oder Verfügbarkeiten wirken sich daher sofort aus.
+
 ## Dashboard
 
 `uv run trainingsplan serve` und http://127.0.0.1:8000 öffnen. Zeitraum wählbar
@@ -128,4 +148,5 @@ erhalten: `uv run trainingsplan init-db --reset` und anschließend
 1. ~~FIT-Import aus Garmin-Export und Personal API, TSS pro Aktivität~~
 2. ~~Dashboard: Wochenumfänge, lange Fahrten, Fitness/Ermüdung/Form (CTL/ATL/TSB)~~
 3. Gesundheitsdaten (HRV, Schlaf) über die Personal API
-4. Ziele erfassen und Planungsvorausschau
+4. ~~Ziele erfassen und Planungsvorausschau~~
+5. Geplante und absolvierte Einheiten abgleichen, Plan an Abweichungen anpassen

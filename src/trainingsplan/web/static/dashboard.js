@@ -218,35 +218,7 @@
       : `<tbody><tr><td class="muted">Keine Einträge im Zeitraum</td></tr></tbody>`;
   }
 
-  // --- Erklärungen als Overlay -------------------------------------------------
-  function infoButton(key) {
-    return `<button class="info-btn" data-info="${key}" aria-label="Erklärung">i</button>`;
-  }
-
-  const dialog = document.getElementById("info-dialog");
-  function openInfo(key) {
-    const info = (window.TP_INFO || {})[key];
-    if (!info) return;
-    document.getElementById("info-title").textContent = info.title;
-    document.getElementById("info-body").innerHTML = info.body;
-    dialog.showModal();
-  }
-  // Ein Klick-Handler für alle (i)-Schaltflächen, auch für später gezeichnete Kacheln
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest(".info-btn");
-    if (btn) { openInfo(btn.dataset.info); return; }
-    if (e.target.closest(".info-close") || e.target === dialog) { dialog.close(); return; }
-    const row = e.target.closest("tr[data-activity]");
-    if (row && window.TP) window.TP.openActivity(row.dataset.activity);
-  });
-  // Tastatur: Zeile mit Enter oder Leertaste öffnen
-  document.addEventListener("keydown", (e) => {
-    const row = e.target.closest && e.target.closest("tr[data-activity]");
-    if (row && (e.key === "Enter" || e.key === " ") && window.TP) {
-      e.preventDefault();
-      window.TP.openActivity(row.dataset.activity);
-    }
-  });
+  const infoButton = (key) => window.TP.infoButton(key);
 
   // ---------------------------------------------------------------------------
   async function load() {

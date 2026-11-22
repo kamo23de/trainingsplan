@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Planung · Trainingsplan{% endblock %}
+{% block content %}
+<section class="tiles" id="plan-status"></section>
+
+<div id="plan-message" class="empty" hidden></div>
+
+<section class="grid plan-top">
+  <article class="card">
+    <div class="card-head">
+      <h2>Events <button class="info-btn" data-info="events" aria-label="Erklärung">i</button></h2>
+      <div class="actions">
+        <button class="btn" data-new-event="A">+ Hauptevent</button>
+        <button class="btn" data-new-event="B">+ Nebenevent</button>
+      </div>
+    </div>
+    <p class="sub">Bis zu drei Hauptevents bestimmen den Aufbau, Nebenevents sind Aufbauevents.</p>
+    <div id="event-list"></div>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <h2>Verfügbare Zeit <button class="info-btn" data-info="availability" aria-label="Erklärung">i</button></h2>
+    </div>
+    <p class="sub">Maximale Trainingszeit je Wochentag in Stunden</p>
+    <form id="availability-form" class="availability"></form>
+  </article>
+
+  <article class="card wide">
+    <h2>Prognose: Fitness, Ermüdung und Form <button class="info-btn" data-info="projection" aria-label="Erklärung">i</button></h2>
+    <p class="sub">Durchgezogen: tatsächlicher Verlauf der letzten 3 Monate · gestrichelt: Prognose, wenn der Plan umgesetzt wird</p>
+    <div class="chart" id="chart-projection"></div>
+    <div class="chart small" id="chart-projection-form"></div>
+  </article>
+</section>
+
+<section class="card calendar-card">
+  <div class="card-head">
+    <h2>Kalender <button class="info-btn" data-info="calendar" aria-label="Erklärung">i</button></h2>
+    <div class="actions">
+      <button class="btn" id="cal-prev" aria-label="Vorheriger Monat">‹</button>
+      <button class="btn" id="cal-today">Heute</button>
+      <button class="btn" id="cal-next" aria-label="Nächster Monat">›</button>
+    </div>
+  </div>
+  <h3 class="cal-month" id="cal-month"></h3>
+  <div class="cal-legend">
+    <span><i class="lg lg-done"></i>absolviert</span>
+    <span><i class="lg lg-plan"></i>geplant</span>
+    <span><i class="lg lg-main"></i>Hauptevent</span>
+    <span><i class="lg lg-side"></i>Nebenevent</span>
+  </div>
+  <div class="calendar" id="calendar" role="grid"></div>
+</section>
+
+<dialog id="event-dialog" aria-labelledby="event-dialog-title">
+  <form id="event-form" method="dialog">
+    <div class="info-head">
+      <h3 id="event-dialog-title">Event</h3>
+      <button type="button" class="info-close-btn" data-close aria-label="Schließen">×</button>
+    </div>
+    <input type="hidden" name="id">
+    <label>Bezeichnung<input name="title" required maxlength="255" placeholder="z. B. Three Peaks Bike Race"></label>
+    <div class="form-row">
+      <label>Art
+        <select name="priority">
+          <option value="A">Hauptevent</option>
+          <option value="B">Nebenevent (Aufbau)</option>
+        </select>
+      </label>
+      <label>Startdatum<input name="start_date" type="date" required></label>
+      <label>Dauer (Tage)<input name="days" type="number" min="1" max="30" value="1" required></label>
+    </div>
+    <div class="form-row">
+      <label>Distanz (km)<input name="distance_km" type="number" min="0" step="1"></label>
+      <label>Höhenmeter<input name="elevation_m" type="number" min="0" step="10"></label>
+    </div>
+    <label>Notiz<textarea name="notes" rows="2"></textarea></label>
+    <p class="form-error" id="event-error" hidden></p>
+    <div class="form-actions">
+      <button type="button" class="btn danger" id="event-delete" hidden>Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="workout-dialog" aria-labelledby="workout-title">
+  <div class="info-head">
+    <h3 id="workout-title"></h3>
+    <button class="info-close-btn" data-close aria-label="Schließen">×</button>
+  </div>
+  <div id="workout-body"></div>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ static_url('planning.js') }}"></script>
+{% endblock %}
