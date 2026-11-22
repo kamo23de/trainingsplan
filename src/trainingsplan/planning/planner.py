@@ -29,6 +29,7 @@ CTL_DAYS = 42
 ATL_DAYS = 7
 RECOVERY_EVERY = 4  # jede 4. Woche Entlastung
 ULTRA_KM = 300
+KEY_EVENT_KM = 150  # Nebenevents ab dieser Distanz verschieben eine Entlastungswoche
 
 # Belastung pro Stunde je Einheitstyp (TSS/h, entspricht IF² · 100)
 TSS_PER_HOUR = {
@@ -109,6 +110,8 @@ class PlanWeek:
     planned_hours: float = 0
     next_main_event: str | None = None
     weeks_to_event: int | None = None
+    base_phase: Phase | None = None  # Phase ohne Entlastung, für die Übersicht
+    note: str | None = None
 
 
 @dataclass
@@ -130,6 +133,7 @@ class Plan:
                     **asdict(w),
                     "start": w.start.isoformat(),
                     "phase": str(w.phase),
+                    "base_phase": str(w.base_phase or w.phase),
                     "target_tss": round(w.target_tss),
                     "planned_tss": round(w.planned_tss),
                     "planned_hours": round(w.planned_hours, 1),
@@ -384,10 +388,29 @@ def build_plan(
         days = [week_start + timedelta(days=i) for i in range(7)]
         phase, ref_event = week_phase(week_start, main)
 
-        # 3:1-Rhythmus in Belastungsphasen
+        # 3:1-Rhythmus in Belastungsphasen. Fällt die Entlastung auf eine Woche mit
+        # einem längeren Nebenevent, wird sie um eine Woche verschoben: das Event ist
+        # dann die Schlüsseleinheit, die Entlastung folgt direkt danach.
+        base_phase = phase
+        note = None
+        key_event = next(
+            (
+                e
+                for e in side
+                if (e.distance_km or 0) >= KEY_EVENT_KM
+                and week_start <= e.start <= week_start + timedelta(days=6)
+            ),
+            None,
+        )
         if phase in RAMP:
-            if loading_weeks >= RECOVERY_EVERY - 1:
+            due = loading_weeks >= RECOVERY_EVERY - 1
+            if due and key_event and loading_weeks < RECOVERY_EVERY:
+                loading_weeks += 1
+                note = f"Entlastung wegen {key_event.title} auf die Folgewoche verschoben"
+            elif due:
                 phase, loading_weeks = Phase.DELOAD, 0
+                if plan.weeks and plan.weeks[-1].note and "verschoben" in plan.weeks[-1].note:
+                    note = "Verschobene Entlastung nach dem Nebenevent"
             else:
                 loading_weeks += 1
         elif phase in (Phase.TAPER, Phase.EVENT, Phase.RECOVERY):
@@ -476,6 +499,8 @@ def build_plan(
             weeks_to_event=((_monday(ref_event.start) - week_start).days // 7)
             if ref_event
             else None,
+            base_phase=base_phase,
+            note=note,
         )
         plan.weeks.append(pw)
         plan.workouts.extend(week_workouts)

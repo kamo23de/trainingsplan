@@ -257,3 +257,39 @@ dialog#event-dialog::backdrop, dialog#workout-dialog::backdrop { background: rgb
   .calendar { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .cal-week, .calendar > .cal-head:first-child { display: none; }
 }
+
+/* --- Saisonübersicht -------------------------------------------------------- */
+.season-card { margin-top: .75rem; }
+.season-hint { margin: 0; }
+.season-scroll { overflow-x: auto; overflow-y: hidden; margin-top: .5rem; }
+.season { position: relative; user-select: none; }
+.season > * { position: absolute; }
+.s-rowlabel { left: 0; width: 88px; font-size: .75rem; font-weight: 600; color: var(--text-secondary); }
+.s-month { top: 0; font-size: .72rem; color: var(--text-secondary); padding-left: 3px; white-space: nowrap; }
+.s-grid { top: 16px; bottom: 0; width: 1px; background: var(--grid); }
+.s-phase { top: 22px; height: 36px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  padding: 0 .5rem; overflow: hidden; white-space: nowrap; text-align: left; cursor: pointer; font: inherit; font-size: .78rem;
+  border: 1px solid var(--border); border-radius: .35rem; background: var(--surface-1); color: var(--text-primary); }
+.s-phase span { font-size: .7rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.s-phase:hover { border-color: var(--accent); }
+.s-phase.phase-event { background: color-mix(in srgb, var(--series-7) 18%, var(--surface-1)); }
+.s-week { top: 64px; height: 20px; border: 0; padding: 0; font: inherit; font-size: .68rem; font-weight: 700; cursor: pointer;
+  background: transparent; color: var(--text-secondary); border-radius: 3px; }
+.s-week:hover { background: var(--grid); }
+.s-week.deload { background: color-mix(in srgb, var(--series-4) 35%, var(--surface-1)); color: var(--text-primary); }
+.s-week.shifted { color: var(--series-4); font-size: .85rem; }
+.s-event { height: 40px; padding: .2rem .45rem; border-radius: .4rem; cursor: grab; overflow: hidden; touch-action: none;
+  display: flex; flex-direction: column; justify-content: center; font-size: .72rem; line-height: 1.25; z-index: 2;
+  transition: box-shadow .15s; }
+.s-event b, .s-event span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s-event.main { background: var(--series-7); color: #fff; }
+.s-event.side { background: var(--surface-1); color: var(--series-7); border: 1.5px solid var(--series-7); }
+.s-event .s-date { opacity: .85; }
+.s-event:hover, .s-event:focus-visible { box-shadow: 0 0 0 2px var(--accent); outline: none; }
+.s-event.dragging { cursor: grabbing; box-shadow: 0 6px 18px rgb(0 0 0 / .25); z-index: 5; transition: none; }
+.s-ctl { left: 0; top: 0; pointer-events: none; }
+.s-ctl-label { font-size: .72rem; color: var(--series-1); font-weight: 600; white-space: nowrap; pointer-events: none; }
+.s-ctl-label.end { transform: translateX(-100%); }
+.s-ctl-label.mid { transform: translateX(-50%); }
+.s-today { top: 16px; bottom: 0; width: 2px; background: var(--accent); z-index: 3; pointer-events: none; }
+.season-status { min-height: 1.2em; font-size: .8rem; color: var(--text-secondary); margin: .3rem 0 0; }

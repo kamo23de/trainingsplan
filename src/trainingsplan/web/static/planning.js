@@ -289,7 +289,210 @@
   document.getElementById("cal-prev").addEventListener("click", () => { state.month.setMonth(state.month.getMonth() - 1); renderCalendar(); });
   document.getElementById("cal-next").addEventListener("click", () => { state.month.setMonth(state.month.getMonth() + 1); renderCalendar(); });
   document.getElementById("cal-today").addEventListener("click", () => { state.month = parse(state.today); state.month.setDate(1); renderCalendar(); });
-  window.addEventListener("resize", () => Object.values(charts).forEach((c) => c.resize()));
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    Object.values(charts).forEach((c) => c.resize());
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => state.plan && renderSeason(), 150);
+  });
+
+
+  // --- Saisonübersicht ---------------------------------------------------------
+  // Zeitstrahl bis nach dem letzten Hauptevent: Phasen, Entlastungswochen, Events
+  // (per Ziehen verschiebbar) und die prognostizierte Fitness.
+  const FOCUS = {
+    "Grundlage": "Z2-Umfang aufbauen, 1× Tempo pro Woche, Samstag lang",
+    "Aufbau": "Sweet Spot und Schwelle, lange Wochenendfahrten",
+    "Spezifisch": "eventnah: Back-to-back-Wochenenden, Verpflegung üben",
+    "Tapering": "Umfang reduzieren, kurz und knackig",
+    "Event": "Vorbelastung, dann los",
+    "Regeneration": "locker, viel Ruhe",
+  };
+  const LABEL_W = 96;
+  const ROW = { month: 0, phase: 22, deload: 64, events: 92, ctl: 188 };
+  const SEASON_H = 300;
+  let season = null; // Geometrie der zuletzt gezeichneten Übersicht
+
+  function renderSeason() {
+    const host = document.getElementById("season");
+    const weeks = state.plan.weeks;
+    if (!weeks.length) { host.innerHTML = `<p class="muted">Lege ein Hauptevent an, dann erscheint hier die Saison.</p>`; host.style.height = "auto"; return; }
+    const first = parse(weeks[0].start);
+    const days = weeks.length * 7;
+    const avail = host.parentElement.clientWidth - LABEL_W - 8;
+    const dayW = Math.max(3.4, avail / days);
+    const width = LABEL_W + days * dayW;
+    const xOf = (iso) => LABEL_W + ((parse(iso) - first) / 86400000) * dayW;
+    season = { first, dayW, xOf, days };
+    host.style.width = `${width}px`;
+    host.style.height = `${SEASON_H}px`;
+    const parts = [];
+
+    // Zeilenbeschriftungen
+    [["Phase", ROW.phase + 8], ["Entlastung", ROW.deload], ["Events", ROW.events + 14], ["Fitness", ROW.ctl + 30]]
+      .forEach(([t, y]) => parts.push(`<div class="s-rowlabel" style="top:${y}px">${t}</div>`));
+
+    // Monate
+    for (let m = new Date(first.getFullYear(), first.getMonth() + 1, 1); (m - first) / 86400000 < days; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
+      const x = xOf(iso(m));
+      parts.push(`<div class="s-month" style="left:${x}px">${MONTHS[m.getMonth()].slice(0, 3)}${m.getMonth() === 0 ? " " + m.getFullYear() : ""}</div>`);
+      parts.push(`<div class="s-grid" style="left:${x}px"></div>`);
+    }
+
+    // Phasen als durchgehende Bänder (Entlastungswochen gehören zu ihrer Phase)
+    let i = 0;
+    while (i < weeks.length) {
+      let j = i;
+      while (j + 1 < weeks.length && weeks[j + 1].base_phase === weeks[i].base_phase) j++;
+      const phase = weeks[i].base_phase;
+      const x0 = xOf(weeks[i].start), x1 = xOf(weeks[j].start) + 7 * dayW;
+      const w = x1 - x0 - 3;
+      const focus = FOCUS[phase] || "";
+      parts.push(`<button class="s-phase phase-${phase.toLowerCase()}" data-month="${weeks[i].start}" style="left:${x0 + 1}px;width:${w}px"
+        title="${esc(phase)} · ${fmtShort(weeks[i].start)}–${fmtShort(iso(addDays(parse(weeks[j].start), 6)))} (${j - i + 1} Wochen)\n${esc(focus)}">
+        <b>${w > 70 ? esc(phase) : esc(phase.slice(0, 4)) + "."}</b>${w > 260 ? `<span>${esc(focus)}</span>` : ""}</button>`);
+      i = j + 1;
+    }
+
+    // Wochen: Entlastung markiert, Tooltip mit Planwerten, Klick springt in den Kalender
+    const proj = Object.fromEntries(state.plan.projection.map((p) => [p.day, p]));
+    weeks.forEach((w) => {
+      const x = xOf(w.start);
+      const ctl = proj[w.start] ? ` · CTL ${nf0.format(proj[w.start].ctl)}` : "";
+      const tip = `Woche ab ${fmtShort(w.start)} · ${w.phase} · Plan ${fmtH(w.planned_hours)}, ${nf0.format(w.planned_tss)} TSS${ctl}${w.note ? "\n" + w.note : ""}`;
+      const cls = w.phase === "Entlastung" ? "s-week deload" : w.note ? "s-week shifted" : "s-week";
+      parts.push(`<button class="${cls}" data-month="${w.start}" style="left:${x + 1}px;width:${7 * dayW - 2}px" title="${esc(tip)}">${w.phase === "Entlastung" ? "E" : w.note ? "↷" : ""}</button>`);
+    });
+
+    // Events in Spuren, damit sich nahe Termine nicht überdecken
+    const lanes = [];
+    const evs = state.events.filter((e) => e.end_date >= weeks[0].start && e.start_date <= iso(addDays(first, days)))
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+    evs.forEach((e) => {
+      const xs = xOf(e.start_date), xe = xOf(e.end_date) + dayW;
+      const w = Math.max(124, xe - xs);
+      // kurze Events: Block um das Datum zentrieren, lange: vom Start bis zum Ende
+      const left = xe - xs >= 124 ? xs : xs + (xe - xs) / 2 - w / 2;
+      let lane = lanes.findIndex((end) => end < left - 4);
+      if (lane < 0) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = left + w;
+      const top = ROW.events + Math.min(lane, 1) * 44;
+      parts.push(`<div class="s-event ${e.priority === "A" ? "main" : "side"}" tabindex="0" role="button"
+        data-event="${e.id}" style="left:${left}px;width:${w}px;top:${top}px"
+        title="${esc(e.title)} · ${fmtDate(e.start_date)}${e.days > 1 ? ` (${e.days} Tage)` : ""} – ziehen zum Verschieben, Klick zum Bearbeiten">
+        <b>${e.priority === "A" ? "★ " : ""}${esc(e.title)}</b><span class="s-date">${fmtShort(e.start_date)}${e.distance_km ? ` · ${nf0.format(e.distance_km)} km` : ""}</span></div>`);
+    });
+
+    // Fitness-Prognose als Linie
+    const allPts = state.plan.projection;
+    if (allPts.length) {
+      // Skala bis zum Start des letzten Hauptevents; der Anstieg während eines
+      // mehrtägigen Events wird oben abgeschnitten, sonst wäre der Rest flach
+      // Linie bis zum Start des letzten Hauptevents: danach sagt die Prognose wenig
+      const lastMain = state.events.filter((e) => e.priority === "A").map((e) => e.start_date).sort().pop();
+      const pts = allPts.filter((p) => !lastMain || p.day <= lastMain);
+      const vals = pts.map((p) => p.ctl);
+      const lo = Math.min(...vals) - 5, hi = Math.max(...vals) + 5;
+      const H = 90;
+      const y = (v) => ROW.ctl + H - ((Math.min(v, hi) - lo) / (hi - lo)) * H;
+      const poly = pts.map((p) => `${(xOf(p.day) + dayW / 2).toFixed(1)},${y(p.ctl).toFixed(1)}`).join(" ");
+      const marks = [];
+      const label = (p, text, anchor) => marks.push(`<div class="s-ctl-label ${anchor}" style="left:${xOf(p.day)}px;top:${y(p.ctl) - 22}px">${text}</div>`);
+      label(pts[0], `heute ${nf0.format(pts[0].ctl)}`, "start");
+      state.events.filter((e) => e.priority === "A").forEach((e) => {
+        const p = pts.find((q) => q.day === e.start_date);
+        if (p) label(p, `Start: CTL ${nf0.format(p.ctl)} · Form ${p.tsb > 0 ? "+" : ""}${nf0.format(p.tsb)}`, "end");
+      });
+      parts.push(`<svg class="s-ctl" width="${width}" height="${SEASON_H}" aria-hidden="true">
+        <polyline points="${poly}" fill="none" stroke="${css("--series-1")}" stroke-width="2.5" stroke-linejoin="round"/></svg>`, ...marks);
+    }
+
+    // Heute
+    parts.push(`<div class="s-today" style="left:${xOf(state.plan.context.today)}px" title="heute"></div>`);
+    host.innerHTML = parts.join("");
+  }
+
+  // Ziehen, Klicken und Tastatur auf Events in der Übersicht
+  const seasonEl = document.getElementById("season");
+  const seasonStatus = (t) => { document.getElementById("season-status").textContent = t; };
+  let drag = null;
+
+  async function moveEvent(id, deltaDays) {
+    const e = state.events.find((x) => String(x.id) === String(id));
+    if (!e || !deltaDays) return;
+    let start = addDays(parse(e.start_date), deltaDays);
+    if (iso(start) < state.today) start = parse(state.today);
+    const body = { title: e.title, start_date: iso(start), days: e.days, priority: e.priority,
+      distance_km: e.distance_km, elevation_m: e.elevation_m, notes: e.notes };
+    seasonStatus(`${e.title} wird auf ${fmtDate(iso(start))} verschoben …`);
+    try {
+      await api(`/api/events/${e.id}`, { method: "PUT", body: JSON.stringify(body) });
+      await reload();
+      seasonStatus(`${e.title} liegt jetzt am ${fmtDate(iso(start))}. Der Plan wurde neu berechnet.`);
+      const el = seasonEl.querySelector(`[data-event="${e.id}"]`);
+      if (el && document.activeElement === document.body) el.focus();
+    } catch (err) {
+      seasonStatus(`Verschieben nicht möglich: ${err.message}`);
+      await reload();
+    }
+  }
+
+  seasonEl.addEventListener("pointerdown", (ev) => {
+    const el = ev.target.closest(".s-event");
+    if (!el || ev.button !== 0) return;
+    ev.preventDefault();
+    el.setPointerCapture(ev.pointerId);
+    const e = state.events.find((x) => String(x.id) === el.dataset.event);
+    drag = { el, id: el.dataset.event, x0: ev.clientX, days: 0, start: e.start_date, label: el.querySelector(".s-date") };
+    el.classList.add("dragging");
+  });
+  seasonEl.addEventListener("pointermove", (ev) => {
+    if (!drag) return;
+    let days = Math.round((ev.clientX - drag.x0) / season.dayW);
+    const minDays = Math.round((parse(state.today) - parse(drag.start)) / 86400000);
+    days = Math.max(days, minDays);
+    drag.days = days;
+    drag.el.style.transform = `translateX(${days * season.dayW}px)`;
+    drag.label.textContent = fmtShort(iso(addDays(parse(drag.start), days))) + (days ? ` (${days > 0 ? "+" : ""}${days} T.)` : "");
+  });
+  const endDrag = (ev) => {
+    if (!drag) return;
+    const { el, id, days } = drag;
+    drag = null;
+    el.classList.remove("dragging");
+    if (ev.type === "pointercancel") { renderSeason(); return; }
+    if (days === 0) { el.style.transform = ""; openEventForm(state.events.find((x) => String(x.id) === id)); return; }
+    moveEvent(id, days);
+  };
+  seasonEl.addEventListener("pointerup", endDrag);
+  seasonEl.addEventListener("pointercancel", endDrag);
+
+  // Tastatur: Pfeile verschieben um einen Tag (mit Umschalt um eine Woche), Enter bearbeitet
+  let keyMove = { id: null, days: 0, timer: null };
+  seasonEl.addEventListener("keydown", (ev) => {
+    const el = ev.target.closest(".s-event");
+    if (!el) return;
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openEventForm(state.events.find((x) => String(x.id) === el.dataset.event)); return; }
+    if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+    ev.preventDefault();
+    const step = (ev.key === "ArrowLeft" ? -1 : 1) * (ev.shiftKey ? 7 : 1);
+    if (keyMove.id !== el.dataset.event) keyMove = { id: el.dataset.event, days: 0, timer: null };
+    keyMove.days += step;
+    el.style.transform = `translateX(${keyMove.days * season.dayW}px)`;
+    const e = state.events.find((x) => String(x.id) === el.dataset.event);
+    el.querySelector(".s-date").textContent = fmtShort(iso(addDays(parse(e.start_date), keyMove.days)));
+    clearTimeout(keyMove.timer);
+    keyMove.timer = setTimeout(() => { const { id, days } = keyMove; keyMove = { id: null, days: 0, timer: null }; moveEvent(id, days); }, 700);
+  });
+
+  // Klick auf Phase oder Woche: Kalender auf diesen Monat
+  seasonEl.addEventListener("click", (ev) => {
+    const target = ev.target.closest("[data-month]");
+    if (!target) return;
+    state.month = parse(target.dataset.month);
+    state.month.setDate(1);
+    renderCalendar().then(() => document.getElementById("calendar-section").scrollIntoView({ behavior: "smooth", block: "start" }));
+  });
 
   async function reload() {
     [state.plan, state.events] = await Promise.all([api("/api/plan"), api("/api/events")]);
@@ -297,6 +500,7 @@
     if (!state.month) { state.month = parse(state.today); state.month.setDate(1); }
     renderStatus();
     renderEvents();
+    renderSeason();
     await Promise.all([renderCalendar(), renderProjection()]);
   }
 
