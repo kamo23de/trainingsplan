@@ -228,3 +228,9 @@ def test_options_api_and_plan_reacts(client):
     assert [o["enabled"] for o in r.json()["options"]] == [False, False, False]
     kinds = {w["kind"] for w in client.get("/api/plan").json()["workouts"]}
     assert not kinds & {"run", "row", "core"}
+
+
+def test_core_workouts_carry_exercise_program():
+    programs = {w.program for w in plan_for([ultra()]).workouts if w.kind == "core"}
+    assert {"core-a", "core-b", "core-c", "mobility"} <= programs
+    assert all(w.program is None for w in plan_for([ultra()]).workouts if w.kind != "core")

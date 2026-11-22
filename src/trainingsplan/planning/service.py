@@ -6,6 +6,7 @@ import polars as pl
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from trainingsplan.analytics.categories import category_of
 from trainingsplan.analytics.dashboard import fitness_series, load_frame
 from trainingsplan.analytics.thresholds import manual_thresholds
 from trainingsplan.planning.planner import DEFAULT_OPTIONS, Plan, PlanEvent, build_plan
@@ -154,11 +155,7 @@ def calendar(db: Session, start: date, end: date) -> dict:
                     "id": a.id,
                     "name": a.name,
                     "time": a.start_time.strftime("%H:%M"),
-                    "category": "eBike"
-                    if a.is_ebike
-                    else "Rad"
-                    if a.sport == "cycling"
-                    else "Sonstige",
+                    "category": category_of(a.sport, a.sub_sport, a.is_ebike),
                     "hours": round((a.moving_time_s or 0) / 3600, 2),
                     "km": round((a.distance_m or 0) / 1000, 1),
                     "tss": round(a.tss) if a.tss is not None else None,
@@ -175,6 +172,7 @@ def calendar(db: Session, start: date, end: date) -> dict:
                     "hours": w.hours,
                     "tss": w.tss,
                     "description": w.description,
+                    "program": w.program,
                 }
             )
     for e in events:

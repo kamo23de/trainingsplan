@@ -12,6 +12,7 @@ import polars as pl
 from garmin_fit_sdk import Decoder, Stream
 from sqlalchemy.orm import Session
 
+from trainingsplan.analytics.categories import category_of
 from trainingsplan.analytics.thresholds import effective_thresholds
 from trainingsplan.storage.models import Activity
 
@@ -143,6 +144,7 @@ def activity_detail(db: Session, activity: Activity, data_dir: Path) -> dict:
         "sport": activity.sport,
         "sub_sport": activity.sub_sport,
         "is_ebike": activity.is_ebike,
+        "category": category_of(activity.sport, activity.sub_sport, activity.is_ebike),
         "device": activity.device,
         "moving_time_s": activity.moving_time_s,
         "elapsed_time_s": activity.elapsed_time_s,

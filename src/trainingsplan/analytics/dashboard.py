@@ -12,16 +12,18 @@ import polars as pl
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from trainingsplan.analytics import categories
 from trainingsplan.storage.models import Activity, AthleteThreshold
 
 CTL_DAYS = 42
 ATL_DAYS = 7
 LONG_RIDE_HOURS = 4.0
 
-CATEGORY_BIKE = "Rad"
-CATEGORY_EBIKE = "eBike"
-CATEGORY_OTHER = "Sonstige"
-CATEGORIES = [CATEGORY_BIKE, CATEGORY_EBIKE, CATEGORY_OTHER]
+CATEGORY_BIKE = categories.BIKE
+CATEGORY_EBIKE = categories.EBIKE
+CATEGORY_OTHER = categories.OTHER
+CATEGORIES = categories.CATEGORIES
+CROSS_CATEGORIES = [categories.RUN, categories.ROW, categories.STRENGTH]
 
 RANGES = {"3m": 91, "1y": 365, "2y": 730, "4y": 1461}
 
@@ -84,11 +86,10 @@ def load_frame(db: Session) -> pl.DataFrame:
         hours=pl.col("moving_time_s").fill_null(0) / 3600,
         km=pl.col("distance_m").fill_null(0) / 1000,
         elevation=pl.col("elevation_gain_m").fill_null(0),
-        category=pl.when(pl.col("is_ebike"))
-        .then(pl.lit(CATEGORY_EBIKE))
-        .when(pl.col("sport") == "cycling")
-        .then(pl.lit(CATEGORY_BIKE))
-        .otherwise(pl.lit(CATEGORY_OTHER)),
+        category=pl.struct("sport", "sub_sport", "is_ebike").map_elements(
+            lambda r: categories.category_of(r["sport"], r["sub_sport"], bool(r["is_ebike"])),
+            return_dtype=pl.Utf8,
+        ),
     )
 
 
@@ -110,7 +111,38 @@ def kpis(df: pl.DataFrame) -> dict:
         "bike_hours_per_week": round(bike["hours"].sum() / weeks, 1),
         "long_rides": len(bike.filter(pl.col("hours") >= LONG_RIDE_HOURS)),
         "longest_ride_km": round(bike["km"].max() or 0),
+        "cross_hours": round(
+            df.filter(pl.col("category").is_in(CROSS_CATEGORIES))["hours"].sum(), 1
+        ),
     }
+
+
+def by_category(df: pl.DataFrame) -> list[dict]:
+    """Anzahl, Stunden, Kilometer und Belastung je Kategorie (in fester Reihenfolge)."""
+    if df.is_empty():
+        return []
+    grouped = {
+        r["category"]: r
+        for r in df.group_by("category")
+        .agg(
+            pl.len().alias("count"),
+            pl.col("hours").sum(),
+            pl.col("km").sum(),
+            pl.col("tss").fill_null(0).sum(),
+        )
+        .iter_rows(named=True)
+    }
+    return [
+        {
+            "category": cat,
+            "count": grouped[cat]["count"],
+            "hours": round(grouped[cat]["hours"], 1),
+            "km": round(grouped[cat]["km"]),
+            "tss": round(grouped[cat]["tss"]),
+        }
+        for cat in CATEGORIES
+        if cat in grouped
+    ]
 
 
 def fitness_series(df: pl.DataFrame, today: date | None = None) -> pl.DataFrame:
@@ -276,6 +308,7 @@ def build_dashboard(db: Session, range_key: str = "1y", today: date | None = Non
             "end": (period.end if period else today).isoformat(),
         },
         "kpis": kpis(selected),
+        "categories": by_category(selected),
         "current": {
             "ctl": round(current["ctl"].item(), 1) if len(current) else None,
             "atl": round(current["atl"].item(), 1) if len(current) else None,

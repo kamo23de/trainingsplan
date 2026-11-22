@@ -83,7 +83,8 @@ konkrete Vorgaben mit Wattbereichen auf Basis der aktuellen FTP.
 Event-Test). Dazu kommt **Ergänzungstraining**, auf der Planungsseite einzeln schaltbar:
 Indoor-Rudern und Laufen (langsam aufgebaut, ab Lauf-Geh-Wechsel) ersetzen im Winter
 und in Entlastungswochen eine Grundlage unter der Woche; Rumpf-Stabi (Programme A/B/C,
-in leichten Wochen Mobilität) kommt 1–2× pro Woche dazu. In der spezifischen Phase und im
+in leichten Wochen Mobilität) kommt 1–2× pro Woche dazu. Ein Klick auf eine Rumpf-Einheit im
+Kalender zeigt jede Übung mit Grafik, Dosierung, Ausführung und typischem Fehler. In der spezifischen Phase und im
 Tapering bleibt es beim Rad.
 
 Fällt eine Entlastungswoche auf ein Nebenevent ab 150 km, wird sie um eine Woche nach
@@ -102,7 +103,9 @@ geänderte Events oder Verfügbarkeiten wirken sich daher sofort aus.
 (3 Monate bis alles); enthält:
 
 - Kennzahlen: Aktivitäten, Trainingszeit, Raddistanz, Höhenmeter, Ø Radstunden pro Woche,
-  Fahrten ab 4 h, längste Fahrt sowie Fitness/Ermüdung/Form von heute
+  Fahrten ab 4 h, längste Fahrt, Stunden Ergänzungstraining sowie Fitness/Ermüdung/Form von heute
+- Sportarten: Rad, eBike, Laufen, Rudern, Kraft, Sonstige – jeweils mit fester Farbe, im
+  Wochenumfang und in der Übersicht „Nach Sportart“
 - Fitness (CTL, 42 Tage) und Ermüdung (ATL, 7 Tage), darunter die Form (TSB)
 - Wochenumfang in Stunden, getrennt nach Rad, eBike und Sonstigem
 - Raddistanz im Jahresvergleich (kumuliert)

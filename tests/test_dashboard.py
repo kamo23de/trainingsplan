@@ -88,3 +88,47 @@ def test_empty_database():
         data = build_dashboard(session, "1y", TODAY)
     assert data["kpis"]["activities"] == 0
     assert data["current"]["ctl"] is None
+
+
+@pytest.mark.parametrize(
+    ("sport", "sub_sport", "ebike", "expected"),
+    [
+        ("cycling", "road", False, "Rad"),
+        ("cycling", "e_bike_fitness", True, "eBike"),
+        ("running", "trail", False, "Laufen"),
+        ("rowing", "indoor_rowing", False, "Rudern"),
+        ("fitness_equipment", "indoor_rowing", False, "Rudern"),
+        ("training", "strength_training", False, "Kraft"),
+        ("fitness_equipment", "strength_training", False, "Kraft"),
+        ("hiking", None, False, "Sonstige"),
+    ],
+)
+def test_category_mapping(sport, sub_sport, ebike, expected):
+    from trainingsplan.analytics.categories import category_of
+
+    assert category_of(sport, sub_sport, ebike) == expected
+
+
+def test_cross_training_has_own_categories(db):
+    run = _activity(10, TODAY - timedelta(days=2), 0.75, 40, km=8)
+    run.sport, run.sub_sport = "running", "generic"
+    row = _activity(11, TODAY - timedelta(days=4), 0.5, 30, km=7)
+    row.sport, row.sub_sport = "rowing", "indoor_rowing"
+    core = _activity(12, TODAY - timedelta(days=5), 0.25, 8, km=0)
+    core.sport, core.sub_sport = "training", "strength_training"
+    db.add_all([run, row, core])
+    db.commit()
+    data = build_dashboard(db, "3m", TODAY)
+    cats = {c["category"]: c for c in data["categories"]}
+    assert (
+        cats["Laufen"]["km"] == 8 and cats["Rudern"]["count"] == 1 and cats["Kraft"]["hours"] == 0.2
+    )
+    assert sum(data["weekly"]["hours"]["Laufen"]) == pytest.approx(0.75)
+    assert data["kpis"]["cross_hours"] == pytest.approx(1.5, abs=0.1)
+    assert [c["category"] for c in data["categories"]] == [
+        "Rad",
+        "eBike",
+        "Laufen",
+        "Rudern",
+        "Kraft",
+    ]
