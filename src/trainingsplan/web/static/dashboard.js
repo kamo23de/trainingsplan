@@ -73,27 +73,27 @@
   function renderKpis(d) {
     const k = d.kpis;
     const tiles = [
-      [nf0.format(k.activities), "", "Aktivitäten"],
-      [nf0.format(k.hours), "h", "Trainingszeit gesamt"],
-      [nf0.format(k.bike_km), "km", "Rad (ohne eBike)"],
-      [nf0.format(k.elevation_m), "hm", "Höhenmeter"],
-      [nf1.format(k.bike_hours_per_week), "h", "Rad pro Woche (Ø)"],
-      [nf0.format(k.long_rides), "", "Fahrten ab 4 h"],
-      [nf0.format(k.longest_ride_km), "km", "Längste Fahrt"],
+      [nf0.format(k.activities), "", "Aktivitäten", "activities"],
+      [nf0.format(k.hours), "h", "Trainingszeit gesamt", "hours"],
+      [nf0.format(k.bike_km), "km", "Rad (ohne eBike)", "bike_km"],
+      [nf0.format(k.elevation_m), "hm", "Höhenmeter", "elevation"],
+      [nf1.format(k.bike_hours_per_week), "h", "Rad pro Woche (Ø)", "bike_per_week"],
+      [nf0.format(k.long_rides), "", "Fahrten ab 4 h", "long_rides"],
+      [nf0.format(k.longest_ride_km), "km", "Längste Fahrt", "longest"],
     ];
-    document.getElementById("kpis").innerHTML = tiles.map(([v, u, l]) =>
-      `<div class="tile"><div class="value">${v}<span class="unit">${u}</span></div><div class="label">${l}</div></div>`
+    document.getElementById("kpis").innerHTML = tiles.map(([v, u, l, key]) =>
+      `<div class="tile">${infoButton(key)}<div class="value">${v}<span class="unit">${u}</span></div><div class="label">${l}</div></div>`
     ).join("");
 
     const c = d.current;
     const tsbText = c.tsb == null ? "–" : (c.tsb > 0 ? "+" : "") + nf0.format(c.tsb);
     const today = [
-      [c.ctl == null ? "–" : nf0.format(c.ctl), "Fitness (CTL) heute"],
-      [c.atl == null ? "–" : nf0.format(c.atl), "Ermüdung (ATL) heute"],
-      [tsbText, "Form (TSB) heute"],
+      [c.ctl == null ? "–" : nf0.format(c.ctl), "Fitness (CTL) heute", "ctl"],
+      [c.atl == null ? "–" : nf0.format(c.atl), "Ermüdung (ATL) heute", "atl"],
+      [tsbText, "Form (TSB) heute", "tsb"],
     ];
-    document.getElementById("today").innerHTML = today.map(([v, l]) =>
-      `<div class="tile"><div class="value">${v}</div><div class="label">${l}</div></div>`
+    document.getElementById("today").innerHTML = today.map(([v, l, key]) =>
+      `<div class="tile">${infoButton(key)}<div class="value">${v}</div><div class="label">${l}</div></div>`
     ).join("");
   }
 
@@ -217,6 +217,26 @@
     document.getElementById(id).innerHTML = rows.length ? head + `<tbody>${body}</tbody>`
       : `<tbody><tr><td class="muted">Keine Einträge im Zeitraum</td></tr></tbody>`;
   }
+
+  // --- Erklärungen als Overlay -------------------------------------------------
+  function infoButton(key) {
+    return `<button class="info-btn" data-info="${key}" aria-label="Erklärung">i</button>`;
+  }
+
+  const dialog = document.getElementById("info-dialog");
+  function openInfo(key) {
+    const info = (window.TP_INFO || {})[key];
+    if (!info) return;
+    document.getElementById("info-title").textContent = info.title;
+    document.getElementById("info-body").innerHTML = info.body;
+    dialog.showModal();
+  }
+  // Ein Klick-Handler für alle (i)-Schaltflächen, auch für später gezeichnete Kacheln
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".info-btn");
+    if (btn) { openInfo(btn.dataset.info); return; }
+    if (e.target.closest(".info-close") || e.target === dialog) dialog.close();
+  });
 
   // ---------------------------------------------------------------------------
   async function load() {

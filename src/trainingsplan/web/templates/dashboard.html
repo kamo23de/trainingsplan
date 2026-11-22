@@ -22,47 +22,56 @@
 
   <section class="grid">
     <article class="card wide">
-      <h2>Fitness und Ermüdung</h2>
+      <h2>Fitness und Ermüdung <button class="info-btn" data-info="fitness_chart" aria-label="Erklärung">i</button></h2>
       <p class="sub">CTL (42-Tage-Mittel der Belastung) und ATL (7-Tage-Mittel), in TSS pro Tag</p>
       <div class="chart" id="chart-fitness"></div>
-      <h2>Form</h2>
+      <h2>Form <button class="info-btn" data-info="form_chart" aria-label="Erklärung">i</button></h2>
       <p class="sub">TSB = Fitness − Ermüdung. Positiv: erholt, negativ: belastet</p>
       <div class="chart small" id="chart-form"></div>
     </article>
 
     <article class="card wide">
-      <h2>Trainingsumfang pro Woche</h2>
+      <h2>Trainingsumfang pro Woche <button class="info-btn" data-info="weekly_chart" aria-label="Erklärung">i</button></h2>
       <p class="sub">Stunden je Woche nach Art der Aktivität</p>
       <div class="chart" id="chart-weekly"></div>
     </article>
 
     <article class="card">
-      <h2>Raddistanz im Jahresvergleich</h2>
+      <h2>Raddistanz im Jahresvergleich <button class="info-btn" data-info="years_chart" aria-label="Erklärung">i</button></h2>
       <p class="sub">Kumulierte Kilometer je Kalenderjahr (ohne eBike)</p>
       <div class="chart" id="chart-years"></div>
     </article>
 
     <article class="card">
-      <h2>FTP-Verlauf</h2>
+      <h2>FTP-Verlauf <button class="info-btn" data-info="ftp_chart" aria-label="Erklärung">i</button></h2>
       <p class="sub">Laut Gerät (aus den FIT-Dateien) und manuell erfasst</p>
       <div class="chart" id="chart-ftp"></div>
     </article>
 
     <article class="card wide">
-      <h2>Lange Fahrten</h2>
-      <p class="sub" id="long-sub">Radfahrten ab 4 Stunden im Zeitraum, nach Distanz. * TSS aus Herzfrequenz berechnet</p>
+      <h2>Lange Fahrten <button class="info-btn" data-info="long_table" aria-label="Erklärung">i</button></h2>
+      <p class="sub" id="long-sub">Radfahrten ab 4 Stunden im Zeitraum, nach Distanz. * TSS aus Herzfrequenz berechnet <button class="info-btn" data-info="tss" aria-label="Erklärung">i</button></p>
       <div class="table-wrap"><table id="table-long"></table></div>
     </article>
 
     <article class="card wide">
-      <h2>Letzte Aktivitäten</h2>
-      <p class="sub">* TSS aus Herzfrequenz berechnet (z. B. eBike)</p>
+      <h2>Letzte Aktivitäten <button class="info-btn" data-info="recent_table" aria-label="Erklärung">i</button></h2>
+      <p class="sub">* TSS aus Herzfrequenz berechnet (z. B. eBike) <button class="info-btn" data-info="tss" aria-label="Erklärung">i</button></p>
       <div class="table-wrap"><table id="table-recent"></table></div>
     </article>
   </section>
 </div>
+
+<dialog id="info-dialog" aria-labelledby="info-title">
+  <div class="info-head">
+    <h3 id="info-title"></h3>
+    <button class="info-close" aria-label="Schließen">×</button>
+  </div>
+  <div id="info-body"></div>
+</dialog>
 {% endblock %}
 {% block scripts %}
-<script src="/static/vendor/echarts.min.js"></script>
-<script src="/static/dashboard.js"></script>
+<script src="{{ static_url('vendor/echarts.min.js') }}"></script>
+<script src="{{ static_url('info.js') }}"></script>
+<script src="{{ static_url('dashboard.js') }}"></script>
 {% endblock %}

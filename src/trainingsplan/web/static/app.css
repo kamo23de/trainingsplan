@@ -85,3 +85,33 @@ td.num, th.num { text-align: right; }
 .table-wrap { overflow-x: auto; }
 .swatch { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; margin-right: .4rem; vertical-align: baseline; }
 .empty { padding: 2rem; text-align: center; color: var(--text-secondary); background: var(--surface-1); border: 1px dashed var(--border); border-radius: .6rem; }
+
+/* Erklärungen: (i)-Schaltfläche und Overlay */
+.tile { position: relative; }
+.tile .info-btn { position: absolute; top: .55rem; right: .55rem; }
+.info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.15rem; height: 1.15rem; padding: 0; margin-left: .3rem; vertical-align: 1px;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--surface-1); color: var(--text-muted);
+  font: italic 600 .7rem/1 Georgia, "Times New Roman", serif; cursor: pointer;
+}
+.info-btn:hover, .info-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+dialog#info-dialog {
+  max-width: 34rem; width: calc(100% - 2rem); padding: 1.1rem 1.3rem 1rem;
+  border: 1px solid var(--border); border-radius: .75rem;
+  background: var(--surface-1); color: var(--text-primary);
+  box-shadow: 0 12px 40px rgb(0 0 0 / .25); line-height: 1.55;
+}
+dialog#info-dialog::backdrop { background: rgb(0 0 0 / .35); }
+.info-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.info-head h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
+.info-close {
+  border: 0; background: transparent; color: var(--text-secondary);
+  font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0 .2rem;
+}
+#info-body p { margin: 0 0 .6rem; }
+#info-body code { font-size: .85em; }
+.info-table { margin: .2rem 0 .6rem; font-size: .85rem; }
+.info-table td { white-space: normal; padding: .3rem .4rem; }
+.info-table td:first-child { white-space: nowrap; font-weight: 600; }
