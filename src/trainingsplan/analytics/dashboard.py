@@ -222,6 +222,7 @@ def ftp_history(db: Session, df: pl.DataFrame) -> dict:
 
 def _activity_row(row: dict) -> dict:
     return {
+        "id": row["id"],
         "date": row["start_time"].strftime("%Y-%m-%d %H:%M"),
         "name": row["name"],
         "category": row["category"],

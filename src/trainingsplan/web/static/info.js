@@ -134,4 +134,72 @@ window.TP_INFO = {
     body: `<p>Die zwölf jüngsten Aktivitäten, unabhängig vom gewählten Zeitraum.
       TSS-Werte mit * wurden aus der Herzfrequenz berechnet.</p>`,
   },
+  np: {
+    title: "Normalized Power (NP)",
+    body: `<p>Gewichtete Durchschnittsleistung. Kurze, harte Abschnitte zählen stärker als
+      im einfachen Mittelwert, weil der Körper auf Leistungsspitzen überproportional
+      reagiert. NP beschreibt daher die tatsächliche Belastung einer wechselhaften
+      Fahrt besser als die Ø Leistung.</p>`,
+  },
+  if: {
+    title: "Intensitätsfaktor (IF)",
+    body: `<p>IF = Normalized Power ÷ FTP. Er zeigt, wie intensiv eine Fahrt im
+      Verhältnis zu deiner Schwelle war.</p>
+      <table class="info-table">
+        <tr><td>unter 0,75</td><td>Grundlage, lange ruhige Fahrten</td></tr>
+        <tr><td>0,75 – 0,85</td><td>Tempo, zügige Ausfahrten</td></tr>
+        <tr><td>0,85 – 0,95</td><td>Sweet Spot, harte Gruppenfahrten</td></tr>
+        <tr><td>über 0,95</td><td>Schwelle und Wettkampf</td></tr>
+      </table>
+      <p>Für Ultradistanzen liegt der IF typischerweise bei 0,55 – 0,70.</p>`,
+  },
+  work: {
+    title: "Arbeit (kJ)",
+    body: `<p>Insgesamt getretene Arbeit. Faustregel: Die Kilojoule am Pedal entsprechen
+      grob den verbrauchten Kilokalorien, weil der Wirkungsgrad des Körpers (~22 %)
+      und der Umrechnungsfaktor (1 kcal = 4,18 kJ) sich etwa aufheben. Hilfreich für
+      die Planung der Verpflegung auf langen Fahrten.</p>`,
+  },
+  streams: {
+    title: "Verlauf",
+    body: `<p>Höhenprofil, Geschwindigkeit, Leistung und Herzfrequenz über die Distanz.
+      Die Diagramme sind gekoppelt: Mit der Maus über eines fahren zeigt dieselbe
+      Stelle in allen. Lange Fahrten sind für die Anzeige ausgedünnt.</p>
+      <p>Ein Anstieg der Herzfrequenz bei gleichbleibender Leistung im Verlauf langer
+      Fahrten (Cardiac Drift) ist ein Zeichen von Ermüdung, Hitze oder zu wenig
+      Flüssigkeit.</p>`,
+  },
+  power_zones: {
+    title: "Leistungszonen",
+    body: `<p>Zeit in den sieben Leistungszonen nach Coggan, bezogen auf die FTP, die zum
+      Zeitpunkt der Fahrt galt:</p>
+      <table class="info-table">
+        <tr><td>Z1 &lt; 55 %</td><td>aktive Erholung</td></tr>
+        <tr><td>Z2 55–75 %</td><td>Grundlagenausdauer</td></tr>
+        <tr><td>Z3 75–90 %</td><td>Tempo</td></tr>
+        <tr><td>Z4 90–105 %</td><td>Schwelle</td></tr>
+        <tr><td>Z5 105–120 %</td><td>VO2max</td></tr>
+        <tr><td>Z6 120–150 %</td><td>anaerobe Kapazität</td></tr>
+        <tr><td>Z7 &gt; 150 %</td><td>neuromuskulär, Sprints</td></tr>
+      </table>
+      <p>Pausen und Rollen ohne Treten zählen als 0 W und damit zu Z1.</p>`,
+  },
+  hr_zones: {
+    title: "Herzfrequenzzonen",
+    body: `<p>Zeit in fünf Herzfrequenzzonen nach Friel, bezogen auf den Schwellenpuls:</p>
+      <table class="info-table">
+        <tr><td>Z1 &lt; 81 %</td><td>Erholung</td></tr>
+        <tr><td>Z2 81–90 %</td><td>Grundlagenausdauer</td></tr>
+        <tr><td>Z3 90–94 %</td><td>Tempo</td></tr>
+        <tr><td>Z4 94–100 %</td><td>Schwelle</td></tr>
+        <tr><td>Z5 &gt; 100 %</td><td>hohe Intensität</td></tr>
+      </table>`,
+  },
+  best_efforts: {
+    title: "Bestwerte dieser Fahrt",
+    body: `<p>Die höchste durchschnittliche Leistung, die innerhalb dieser Fahrt über die
+      jeweilige Dauer gehalten wurde. Der 20-Minuten-Wert × 0,95 ist eine gängige
+      Schätzung der FTP – allerdings nur, wenn die 20 Minuten wirklich voll gefahren
+      wurden.</p>`,
+  },
 };

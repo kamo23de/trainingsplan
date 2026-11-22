@@ -203,7 +203,7 @@
     const head = `<thead><tr><th>Datum</th><th>Name</th><th>Art</th><th class="num">Dauer</th>
       <th class="num">km</th><th class="num">hm</th><th class="num">NP</th><th class="num">Ø HF</th>
       <th class="num">TSS</th></tr></thead>`;
-    const body = rows.map((r) => `<tr>
+    const body = rows.map((r) => `<tr class="clickable" data-activity="${r.id}" tabindex="0" title="Details anzeigen">
       <td>${fmtDate(r.date)} ${r.date.slice(11)}</td>
       <td>${esc(r.name) || '<span class="muted">–</span>'}</td>
       <td><span class="swatch" style="background:${series(CATEGORY_SLOT[r.category])}"></span>${r.category}</td>
@@ -235,7 +235,17 @@
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".info-btn");
     if (btn) { openInfo(btn.dataset.info); return; }
-    if (e.target.closest(".info-close") || e.target === dialog) dialog.close();
+    if (e.target.closest(".info-close") || e.target === dialog) { dialog.close(); return; }
+    const row = e.target.closest("tr[data-activity]");
+    if (row && window.TP) window.TP.openActivity(row.dataset.activity);
+  });
+  // Tastatur: Zeile mit Enter oder Leertaste öffnen
+  document.addEventListener("keydown", (e) => {
+    const row = e.target.closest && e.target.closest("tr[data-activity]");
+    if (row && (e.key === "Enter" || e.key === " ") && window.TP) {
+      e.preventDefault();
+      window.TP.openActivity(row.dataset.activity);
+    }
   });
 
   // ---------------------------------------------------------------------------
