@@ -272,4 +272,22 @@ window.TP_INFO = {
       Event ist dann die Schlüsseleinheit, die Entlastung folgt direkt danach.</p>
       <p>Ein Klick auf eine Phase oder Woche zeigt den Monat im Kalender.</p>`,
   },
+  cross_training: {
+    title: "Ergänzungstraining",
+    body: `<p>Abwechslung zum Rad, sinnvoll dosiert für ein Ultra-Ziel:</p>
+      <table class="info-table">
+        <tr><td>Indoor-Rudern</td><td>Ganzkörper-Ausdauer, schont Sitzfläche und Knie. Im Winter abwechselnd mit
+          Laufen statt einer Grundlage unter der Woche, außerdem in Entlastungs- und Regenerationswochen.</td></tr>
+        <tr><td>Laufen</td><td>Reiz für Knochen und Bindegewebe, den Radfahren nicht gibt. Startet als
+          Lauf-Geh-Wechsel mit 30 min und wird langsam auf 45 min gesteigert. Im Aufbau jede zweite Woche.</td></tr>
+        <tr><td>Rumpf-Stabi</td><td>15–20 min, 2× pro Woche mit einem Tag Abstand, im Wechsel Programm A (Basis),
+          B (Rotation &amp; Hüfte) und C (Nacken, Schultern – für lange Stunden im Sattel).
+          In leichten Wochen Mobilität.</td></tr>
+      </table>
+      <p>In der spezifischen Phase und im Tapering bleibt es beim Rad: Dann zählt die
+      Spezifität. Rumpf-Stabi läuft weiter, nur weniger.</p>
+      <p>Auch die Radeinheiten wechseln: Tempo, Sweet Spot und Schwelle in verschiedenen
+      Formen, Grundlagen mit Trittfrequenz- oder Kraftausdauer-Teil, lange Fahrten mit
+      Tempo-Abschnitt oder als Test von Ausrüstung und Verpflegung.</p>`,
+  },
 };

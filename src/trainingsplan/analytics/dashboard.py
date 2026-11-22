@@ -57,6 +57,7 @@ def load_frame(db: Session) -> pl.DataFrame:
             Activity.tss,
             Activity.load_basis,
             Activity.file_ftp_w,
+            Activity.file_lthr_bpm,
         ).order_by(Activity.start_time)
     ).all()
     schema = {
@@ -75,6 +76,7 @@ def load_frame(db: Session) -> pl.DataFrame:
         "tss": pl.Float64,
         "load_basis": pl.Utf8,
         "file_ftp_w": pl.Int64,
+        "file_lthr_bpm": pl.Int64,
     }
     df = pl.DataFrame([tuple(r) for r in rows], schema=schema, orient="row")
     return df.with_columns(

@@ -78,6 +78,14 @@ Die Wochenbelastung ergibt sich aus der aktuellen Fitness (CTL) und der gewünsc
 Steigerung je Phase, begrenzt durch die verfügbare Zeit je Wochentag. Jede Einheit hat
 konkrete Vorgaben mit Wattbereichen auf Basis der aktuellen FTP.
 
+**Abwechslung:** Die Radeinheiten wechseln wochenweise ihre Form (z. B. Sweet Spot
+3 × 12, 2 × 20 oder Over-Under; lange Fahrten ruhig, mit Tempo-Abschnitt oder als
+Event-Test). Dazu kommt **Ergänzungstraining**, auf der Planungsseite einzeln schaltbar:
+Indoor-Rudern und Laufen (langsam aufgebaut, ab Lauf-Geh-Wechsel) ersetzen im Winter
+und in Entlastungswochen eine Grundlage unter der Woche; Rumpf-Stabi (Programme A/B/C,
+in leichten Wochen Mobilität) kommt 1–2× pro Woche dazu. In der spezifischen Phase und im
+Tapering bleibt es beim Rad.
+
 Fällt eine Entlastungswoche auf ein Nebenevent ab 150 km, wird sie um eine Woche nach
 hinten verschoben – das Event ist dann die Schlüsseleinheit der Woche.
 

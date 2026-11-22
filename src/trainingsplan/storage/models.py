@@ -122,5 +122,14 @@ class Availability(Base):
     hours: Mapped[float] = mapped_column(Float, default=0)
 
 
+class TrainingOption(Base):
+    """Ein- und ausschaltbares Ergänzungstraining (row, run, core)."""
+
+    __tablename__ = "training_option"
+
+    key: Mapped[str] = mapped_column(String(16), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=True)
+
+
 # Startwerte: unter der Woche kurze Einheiten nach Feierabend, am Wochenende lange Fahrten
 DEFAULT_AVAILABILITY = {0: 0.0, 1: 1.5, 2: 1.0, 3: 1.5, 4: 0.0, 5: 6.0, 6: 3.5}
