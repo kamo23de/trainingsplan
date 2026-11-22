@@ -1,27 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Trainingsplan{% endblock %}
 {% block content %}
-<section class="tiles">
-  <div class="tile">
-    <div class="value">{{ summary.activities }}</div>
-    <div class="label">Aktivitäten</div>
+<div class="filters">
+  <div class="segmented" role="group" aria-label="Zeitraum">
+    <button data-range="3m">3 Monate</button>
+    <button data-range="1y">1 Jahr</button>
+    <button data-range="2y">2 Jahre</button>
+    <button data-range="4y">4 Jahre</button>
+    <button data-range="all">Alles</button>
   </div>
-  <div class="tile">
-    <div class="value">{{ "{:,.0f}".format(summary.distance_km).replace(",", ".") }} km</div>
-    <div class="label">Gesamtdistanz</div>
-  </div>
-  <div class="tile">
-    <div class="value">{{ summary.first_activity[:10] if summary.first_activity else "–" }}</div>
-    <div class="label">Erste Aktivität</div>
-  </div>
-  <div class="tile">
-    <div class="value">{{ summary.last_activity[:10] if summary.last_activity else "–" }}</div>
-    <div class="label">Letzte Aktivität</div>
-  </div>
-</section>
+  <span class="period" id="period"></span>
+</div>
 
-{% if summary.activities == 0 %}
-<p class="muted">Noch keine Daten importiert. Nächster Schritt: Garmin-Export importieren
-(siehe README).</p>
-{% endif %}
+<div id="empty" class="empty" hidden>
+  Noch keine Daten importiert. Mit <code>uv run trainingsplan sync</code> die Aktivitäten aus Garmin Connect holen.
+</div>
+
+<div id="content">
+  <section class="tiles" id="kpis"></section>
+  <section class="tiles today" id="today"></section>
+
+  <section class="grid">
+    <article class="card wide">
+      <h2>Fitness und Ermüdung</h2>
+      <p class="sub">CTL (42-Tage-Mittel der Belastung) und ATL (7-Tage-Mittel), in TSS pro Tag</p>
+      <div class="chart" id="chart-fitness"></div>
+      <h2>Form</h2>
+      <p class="sub">TSB = Fitness − Ermüdung. Positiv: erholt, negativ: belastet</p>
+      <div class="chart small" id="chart-form"></div>
+    </article>
+
+    <article class="card wide">
+      <h2>Trainingsumfang pro Woche</h2>
+      <p class="sub">Stunden je Woche nach Art der Aktivität</p>
+      <div class="chart" id="chart-weekly"></div>
+    </article>
+
+    <article class="card">
+      <h2>Raddistanz im Jahresvergleich</h2>
+      <p class="sub">Kumulierte Kilometer je Kalenderjahr (ohne eBike)</p>
+      <div class="chart" id="chart-years"></div>
+    </article>
+
+    <article class="card">
+      <h2>FTP-Verlauf</h2>
+      <p class="sub">Laut Gerät (aus den FIT-Dateien) und manuell erfasst</p>
+      <div class="chart" id="chart-ftp"></div>
+    </article>
+
+    <article class="card wide">
+      <h2>Lange Fahrten</h2>
+      <p class="sub" id="long-sub">Radfahrten ab 4 Stunden im Zeitraum, nach Distanz. * TSS aus Herzfrequenz berechnet</p>
+      <div class="table-wrap"><table id="table-long"></table></div>
+    </article>
+
+    <article class="card wide">
+      <h2>Letzte Aktivitäten</h2>
+      <p class="sub">* TSS aus Herzfrequenz berechnet (z. B. eBike)</p>
+      <div class="table-wrap"><table id="table-recent"></table></div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/echarts.min.js"></script>
+<script src="/static/dashboard.js"></script>
 {% endblock %}

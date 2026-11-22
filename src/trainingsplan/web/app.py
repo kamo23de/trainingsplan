@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from trainingsplan import __version__
+from trainingsplan.analytics.dashboard import RANGES, build_dashboard
 from trainingsplan.storage.db import init_db, session_scope
 from trainingsplan.storage.models import Activity
 
@@ -26,6 +28,9 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Trainingsplan", version=__version__, lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+
+RangeKey = Annotated[str, Query(pattern="^(" + "|".join([*RANGES, "all"]) + ")$")]
 
 
 @app.get("/health")
@@ -49,6 +54,11 @@ def summary(db: DbSession) -> dict:
         "first_activity": first.isoformat() if first else None,
         "last_activity": last.isoformat() if last else None,
     }
+
+
+@app.get("/api/dashboard")
+def dashboard_data(db: DbSession, range: RangeKey = "1y") -> dict:  # noqa: A002
+    return build_dashboard(db, range)
 
 
 @app.get("/", response_class=HTMLResponse)

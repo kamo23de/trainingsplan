@@ -4,23 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Trainingsplan{% endblock %}</title>
-  <style>
-    :root { color-scheme: light dark; --muted: #6b7280; --border: #d1d5db; }
-    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 2rem; max-width: 72rem; margin-inline: auto; }
-    header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; }
-    h1 { margin: 0; font-size: 1.5rem; }
-    .muted { color: var(--muted); }
-    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
-    .tile { border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; }
-    .tile .value { font-size: 1.75rem; font-weight: 600; }
-    .tile .label { color: var(--muted); font-size: .875rem; }
-  </style>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
-  <header>
+<body class="viz-root">
+  <header class="page-header">
     <h1>Trainingsplan</h1>
     <span class="muted">v{{ version }}</span>
   </header>
   <main>{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

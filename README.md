@@ -61,6 +61,26 @@ uv run pytest
 uv run ruff check .
 ```
 
+## Dashboard
+
+`uv run trainingsplan serve` und http://127.0.0.1:8000 öffnen. Zeitraum wählbar
+(3 Monate bis alles); enthält:
+
+- Kennzahlen: Aktivitäten, Trainingszeit, Raddistanz, Höhenmeter, Ø Radstunden pro Woche,
+  Fahrten ab 4 h, längste Fahrt sowie Fitness/Ermüdung/Form von heute
+- Fitness (CTL, 42 Tage) und Ermüdung (ATL, 7 Tage), darunter die Form (TSB)
+- Wochenumfang in Stunden, getrennt nach Rad, eBike und Sonstigem
+- Raddistanz im Jahresvergleich (kumuliert)
+- FTP-Verlauf laut Gerät und manuell erfasst
+- Lange Fahrten und letzte Aktivitäten als Tabelle
+
+Zum Ausprobieren ohne echte Daten gibt es Demo-Daten in einem eigenen Ordner:
+
+```sh
+TP_DATA_DIR=./demo-data uv run python scripts/seed_demo.py
+TP_DATA_DIR=./demo-data uv run trainingsplan serve
+```
+
 ## Garmin anbinden
 
 Beide Wege liefern die Original-FIT-Dateien und landen im selben Import. Dieselbe Fahrt
@@ -106,6 +126,6 @@ erhalten: `uv run trainingsplan init-db --reset` und anschließend
 ## Nächste Schritte
 
 1. ~~FIT-Import aus Garmin-Export und Personal API, TSS pro Aktivität~~
-2. Dashboard: Wochenumfänge, lange Fahrten, Fitness/Ermüdung/Form (CTL/ATL/TSB)
+2. ~~Dashboard: Wochenumfänge, lange Fahrten, Fitness/Ermüdung/Form (CTL/ATL/TSB)~~
 3. Gesundheitsdaten (HRV, Schlaf) über die Personal API
 4. Ziele erfassen und Planungsvorausschau
