@@ -94,7 +94,25 @@ Die **Saisonübersicht** zeigt Phasen, Entlastungswochen, Events und die prognos
 Fitness als Zeitstrahl. Events lassen sich dort mit der Maus (oder per Pfeiltasten)
 verschieben; der Plan wird sofort neu berechnet.
 
-Der Plan wird nicht gespeichert, sondern bei jedem Aufruf neu berechnet. Neue Aktivitäten,
+Der Plan wird bei jedem Aufruf neu berechnet. Die geplanten Einheiten eines Tages werden
+dabei **eingefroren**, sobald der Tag beginnt (Tabelle `planned_workout`).
+
+### Passung zum Plan
+
+Beim Import (`sync`, `import-export`) wird jede neue Aktivität mit der eingefrorenen Planung
+ihres Tages verglichen und erhält einen **Score von 0 bis 10**: Sportart (2), Dauer (3),
+Belastung (3) und Intensität (2). Er erscheint im Kalender, in den Tabellen des Rückblicks und
+in der Detailansicht. Verpasste Einheiten sind im Kalender durchgestrichen. Neu bewerten:
+`uv run trainingsplan score`.
+
+### Workouts auf das Garmin-Gerät
+
+Jede geplante Einheit lässt sich als **FIT-Workout** mit allen Schritten (Leistungsziele in
+% FTP) herunterladen oder – wenn das Gerät per USB als Laufwerk verbunden ist – direkt nach
+`Garmin/NewFiles` übertragen (Button in der Detailansicht der Einheit). Geräte mit MTP
+(z. B. Edge 840/1040) erscheinen am Mac nicht als Laufwerk: Datei herunterladen und mit
+einem MTP-Programm kopieren. Fester Zielordner: `TP_GARMIN_DEVICE_DIR`. Eine Übertragung in
+den Garmin-Connect-Kalender ist mit dem persönlichen API-Schlüssel nicht möglich. Neue Aktivitäten,
 geänderte Events oder Verfügbarkeiten wirken sich daher sofort aus.
 
 ## Dashboard

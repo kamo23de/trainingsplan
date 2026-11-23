@@ -309,4 +309,36 @@ window.TP_INFO = {
       </table>
       <p>Jede Sportart hat überall im Rückblick dieselbe Farbe.</p>`,
   },
+  compliance: {
+    title: "Passung zum Plan (0–10)",
+    body: `<p>Beim Import aus Garmin wird jede Aktivität mit der Einheit verglichen, die für
+      diesen Tag geplant war. Die Planung eines Tages wird dafür eingefroren, sobald der
+      Tag beginnt – spätere Planänderungen verfälschen den Vergleich nicht.</p>
+      <table class="info-table">
+        <tr><td>Sportart · 2</td><td>passt genau 2, andere Ausdauersportart (z. B. Laufen statt Rad) 1</td></tr>
+        <tr><td>Dauer · 3</td><td>voll bei geplanter Dauer, 0 bei weniger als 40 % oder mehr als 250 %</td></tr>
+        <tr><td>Belastung · 3</td><td>dasselbe für den TSS</td></tr>
+        <tr><td>Intensität · 2</td><td>Intensitätsfaktor im Zielbereich der Einheit (z. B. Grundlage 0,55–0,76)</td></tr>
+      </table>
+      <p><b>8–10</b> gut · <b>5–7,9</b> teilweise · <b>unter 5</b> abweichend. Training an einem
+      geplanten Ruhetag ergibt 6 (locker und kurz) bzw. 3. eBike-Pendeln wird nicht
+      bewertet, zusätzliche Einheiten ohne Plan ebenfalls nicht.</p>
+      <p>Neu bewerten, z. B. nach Änderung der FTP: <code>uv run trainingsplan score</code></p>`,
+  },
+  garmin_transfer: {
+    title: "Auf Garmin übertragen",
+    body: `<p>Die Einheit wird als <b>FIT-Workout</b> mit allen Schritten erzeugt – Einfahren,
+      Intervalle mit Wiederholungen, Ausfahren. Leistungsziele stehen in % FTP; das Gerät
+      rechnet sie mit der dort eingestellten FTP in Watt um.</p>
+      <p><b>Auf Gerät übertragen:</b> Ist ein Garmin-Gerät per USB als Laufwerk verbunden
+      (Ordner <code>Garmin/NewFiles</code>), kopiert die App die Datei direkt dorthin. Nach
+      dem Auswerfen erscheint das Workout auf dem Gerät unter Training › Workouts; bei
+      manchen Geräten erst nach einem Neustart.</p>
+      <p><b>Neuere Geräte</b> (z. B. Edge 840/1040) verbinden sich am Mac nicht als Laufwerk,
+      sondern per MTP. Dann die FIT-Datei herunterladen und mit einem MTP-Programm (z. B.
+      OpenMTP) nach <code>Garmin/NewFiles</code> oder <code>Garmin/Workouts</code> kopieren. Ein
+      fester Zielordner lässt sich mit <code>TP_GARMIN_DEVICE_DIR</code> einstellen.</p>
+      <p>Eine direkte Übertragung in den Garmin-Connect-Kalender ist mit dem persönlichen
+      API-Schlüssel nicht möglich – Garmin bietet das nur Firmenpartnern an.</p>`,
+  },
 };

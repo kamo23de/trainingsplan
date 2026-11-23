@@ -13,8 +13,9 @@ from garmin_fit_sdk import Decoder, Stream
 from sqlalchemy.orm import Session
 
 from trainingsplan.analytics.categories import category_of
+from trainingsplan.analytics.compliance import compliance_dict
 from trainingsplan.analytics.thresholds import effective_thresholds
-from trainingsplan.storage.models import Activity
+from trainingsplan.storage.models import Activity, PlanCompliance, PlannedWorkout
 
 MAX_POINTS = 600  # Punkte je Verlaufskurve für die Anzeige
 SEMICIRCLE_TO_DEG = 180 / 2**31
@@ -166,9 +167,19 @@ def activity_detail(db: Session, activity: Activity, data_dir: Path) -> dict:
         "lthr_bpm": thresholds.lthr_bpm,
     }
 
+    compliance = compliance_dict(db.get(PlanCompliance, activity.id))
+    if compliance and compliance["planned_id"]:
+        planned = db.get(PlannedWorkout, compliance["planned_id"])
+        compliance["planned_description"] = planned.description if planned else None
+
     raw = data_dir / activity.raw_file if activity.raw_file else None
     if raw is None or not raw.exists():
-        return {"summary": summary, "streams": None, "raw_file_missing": True}
+        return {
+            "summary": summary,
+            "streams": None,
+            "raw_file_missing": True,
+            "compliance": compliance,
+        }
 
     records = read_records(raw)
     seconds = to_seconds(records)
@@ -200,6 +211,7 @@ def activity_detail(db: Session, activity: Activity, data_dir: Path) -> dict:
         "best_efforts": best_efforts(seconds["power"]) if has_power else [],
         "route": route(records),
         "raw_file_missing": False,
+        "compliance": compliance,
     }
 
 

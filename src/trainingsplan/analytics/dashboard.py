@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from trainingsplan.analytics import categories
-from trainingsplan.storage.models import Activity, AthleteThreshold
+from trainingsplan.storage.models import Activity, AthleteThreshold, PlanCompliance
 
 CTL_DAYS = 42
 ATL_DAYS = 7
@@ -286,6 +286,20 @@ def recent(df: pl.DataFrame, limit: int = 12) -> list[dict]:
     ]
 
 
+def attach_scores(db: Session, rows: list[dict]) -> list[dict]:
+    """Ergänzt Tabellenzeilen um den Passungs-Score zur geplanten Einheit."""
+    ids = [r["id"] for r in rows]
+    scores = {
+        c.activity_id: c
+        for c in db.scalars(select(PlanCompliance).where(PlanCompliance.activity_id.in_(ids)))
+    }
+    for r in rows:
+        c = scores.get(r["id"])
+        r["plan_score"] = c.score if c else None
+        r["plan_title"] = c.planned_title if c else None
+    return rows
+
+
 def build_dashboard(db: Session, range_key: str = "1y", today: date | None = None) -> dict:
     today = today or datetime.now(UTC).date()
     period = period_for(range_key, today)
@@ -323,8 +337,8 @@ def build_dashboard(db: Session, range_key: str = "1y", today: date | None = Non
         "weekly": weekly(selected, period),
         "years": yearly_cumulative(df),
         "ftp": ftp_history(db, df),
-        "long_rides": long_rides(selected),
-        "recent": recent(df),
+        "long_rides": attach_scores(db, long_rides(selected)),
+        "recent": attach_scores(db, recent(df)),
         "load_basis_counts": {
             k: int(v) for k, v in selected.group_by("load_basis").len().iter_rows()
         }

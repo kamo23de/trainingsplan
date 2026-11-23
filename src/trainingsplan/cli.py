@@ -65,6 +65,40 @@ def garmin_check() -> None:
         typer.echo(f"Beispiel: {first.get('startTimeLocal')} – {first.get('activityName')}")
 
 
+def _score_new_activities(db, first_new_id: int) -> None:
+    """Bewertet neu importierte Aktivitäten gegen die eingefrorene Tagesplanung."""
+    from sqlalchemy import select
+
+    from trainingsplan.analytics.compliance import evaluate_day
+    from trainingsplan.storage.models import Activity, PlanCompliance
+
+    days = {
+        a.start_time.date() for a in db.scalars(select(Activity).where(Activity.id >= first_new_id))
+    }
+    scored = sum(evaluate_day(db, day) for day in sorted(days))
+    db.commit()
+    if scored:
+        rows = db.scalars(
+            select(PlanCompliance)
+            .join(Activity, Activity.id == PlanCompliance.activity_id)
+            .where(Activity.id >= first_new_id, PlanCompliance.score.is_not(None))
+        ).all()
+        for c in rows:
+            a = db.get(Activity, c.activity_id)
+            typer.echo(
+                f"  Passung {a.start_time:%d.%m.} {a.name or a.sport}: "
+                f"{c.score:.1f}/10 ({c.planned_title or 'Ruhetag'})"
+            )
+
+
+def _next_activity_id(db) -> int:
+    from sqlalchemy import func, select
+
+    from trainingsplan.storage.models import Activity
+
+    return (db.scalar(select(func.max(Activity.id))) or 0) + 1
+
+
 # --- Import ------------------------------------------------------------------------
 
 
@@ -85,6 +119,7 @@ def import_export(
     stats = ImportStats()
 
     with get_sessionmaker()() as db:
+        first_new = _next_activity_id(db)
         for i, fit in enumerate(iter_fit_files(root), start=1):
             try:
                 stats.add(
@@ -103,6 +138,7 @@ def import_export(
                 db.commit()
                 typer.echo(f"… {i} Dateien verarbeitet")
         db.commit()
+        _score_new_activities(db, first_new)
 
     typer.echo(f"Fertig: {stats.summary()}")
     for err in stats.errors[:10]:
@@ -140,6 +176,12 @@ def sync(
             since = (latest - timedelta(days=1)) if latest else cutoff
         start_date = max(since.date(), cutoff.date())
         typer.echo(f"Rufe Aktivitäten ab {start_date} ab …")
+
+        # Planung von heute einfrieren, bevor neue Aktivitäten sie verschieben
+        from trainingsplan.planning.service import compute_plan
+
+        compute_plan(db)
+        first_new = _next_activity_id(db)
 
         try:
             client = open_client()
@@ -184,6 +226,7 @@ def sync(
                     db.commit()
                     typer.echo(f"… {i}/{len(summaries)}")
         db.commit()
+        _score_new_activities(db, first_new)
 
     typer.echo(f"Fertig: {stats.summary()}")
     for err in stats.errors[:10]:
@@ -194,6 +237,28 @@ def sync(
             f"`trainingsplan sync --since {start_date}` "
             "(bereits importierte Aktivitäten werden dabei übersprungen)."
         )
+
+
+@app.command()
+def score(
+    since: datetime = typer.Option(None, formats=["%Y-%m-%d"], help="ab Datum; Standard: alles"),
+) -> None:
+    """Bewertet Aktivitäten erneut gegen die eingefrorene Tagesplanung (Score 0–10)."""
+    from sqlalchemy import select
+
+    from trainingsplan.analytics.compliance import evaluate_day
+    from trainingsplan.storage.db import get_sessionmaker, init_db
+    from trainingsplan.storage.models import PlannedWorkout
+
+    init_db()
+    with get_sessionmaker()() as db:
+        query = select(PlannedWorkout.day).distinct()
+        if since:
+            query = query.where(PlannedWorkout.day >= since.date())
+        days = [d for d in db.scalars(query) if d <= datetime.now(UTC).date()]
+        scored = sum(evaluate_day(db, d) for d in days)
+        db.commit()
+    typer.echo(f"{scored} Aktivitäten an {len(days)} geplanten Tagen bewertet.")
 
 
 # --- Leistungsschwellen ------------------------------------------------------------

@@ -324,3 +324,38 @@ dialog#workout-dialog.wide { width: min(52rem, calc(100% - 2rem)); max-height: c
 .ex-text ul { margin: .2rem 0 .35rem; padding-left: 1.1rem; font-size: .88rem; line-height: 1.45; }
 .ex-mistake { margin: 0; font-size: .82rem; color: var(--text-secondary); }
 @media (max-width: 640px) { .exercise { grid-template-columns: 1fr; } }
+
+/* Passungs-Score */
+.viz-root { --status-good: #0ca30c; --status-warn: #fab219; --status-bad: #d03b3b; }
+.score { display: inline-block; min-width: 1.6rem; padding: 0 .35rem; margin-right: .3rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 700; text-align: center; line-height: 1.35; color: #fff; vertical-align: 1px; }
+.score-good { background: var(--status-good); }
+.score-warn { background: var(--status-warn); color: #0b0b0b; }
+.score-bad { background: var(--status-bad); }
+.cal-item.plan.missed { opacity: .55; text-decoration: line-through; text-decoration-color: var(--text-muted); }
+.cal-item.plan.missed .ci-meta { text-decoration: none; }
+.missed-note { color: var(--text-secondary); font-weight: 600; }
+.compliance { margin: .75rem 0; }
+.cp-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin: .3rem 0 .6rem; }
+.cp-head .score { font-size: .95rem; padding: .1rem .55rem; }
+.cp-head .sub { margin: 0; }
+.cp-rating { font-weight: 600; }
+.cp-parts { display: grid; gap: .3rem; max-width: 30rem; }
+.cp-row { display: grid; grid-template-columns: 6rem 1fr 4rem; gap: .6rem; align-items: center; font-size: .85rem; }
+.cp-bar { height: .5rem; background: var(--grid); border-radius: 3px; overflow: hidden; }
+.cp-bar i { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
+.cp-val { text-align: right; color: var(--text-secondary); }
+.cp-note { margin: .5rem 0 0; color: var(--text-secondary); font-size: .85rem; }
+
+/* Ablauf und Garmin-Übertragung */
+.steps-head, .garmin-box h4 { margin: 1rem 0 .3rem; font-size: .95rem; }
+.steps { margin: 0; padding-left: 1.2rem; font-size: .85rem; line-height: 1.5; }
+.steps ol { padding-left: 1.1rem; margin: .1rem 0 .3rem; }
+.steps .st-name { font-weight: 600; margin-right: .4rem; }
+.steps .st-meta { color: var(--text-secondary); }
+.garmin-box { border-top: 1px solid var(--grid); margin-top: 1rem; padding-top: .2rem; }
+.garmin-box .actions { flex-wrap: wrap; }
+.garmin-box a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.garmin-status { font-size: .85rem; min-height: 1.2em; }
+.garmin-status.ok { color: var(--status-good); }
+.garmin-status.error { color: var(--status-bad); }

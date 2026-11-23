@@ -3,10 +3,11 @@
 from datetime import UTC, date, datetime, timedelta
 
 import polars as pl
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from trainingsplan.analytics.categories import category_of
+from trainingsplan.analytics.compliance import compliance_dict
 from trainingsplan.analytics.dashboard import fitness_series, load_frame
 from trainingsplan.analytics.thresholds import manual_thresholds
 from trainingsplan.planning.planner import DEFAULT_OPTIONS, Plan, PlanEvent, build_plan
@@ -16,6 +17,8 @@ from trainingsplan.storage.models import (
     Availability,
     Event,
     EventPriority,
+    PlanCompliance,
+    PlannedWorkout,
     TrainingOption,
 )
 
@@ -106,6 +109,7 @@ def compute_plan(db: Session, today: date | None = None) -> tuple[Plan, dict]:
 
     events = [to_plan_event(e) for e in db.scalars(select(Event).order_by(Event.start_date))]
     ftp = current_ftp(db, df, today)
+    lthr = current_lthr(db, df, today)
     plan = build_plan(
         plan_start,
         ctl,
@@ -115,8 +119,9 @@ def compute_plan(db: Session, today: date | None = None) -> tuple[Plan, dict]:
         get_availability(db),
         actual,
         options=get_options(db),
-        lthr=current_lthr(db, df, today),
+        lthr=lthr,
     )
+    save_snapshot(db, plan, plan_start, ftp, lthr)
     context = {
         "today": today.isoformat(),
         "plan_start": plan_start.isoformat(),
@@ -126,6 +131,51 @@ def compute_plan(db: Session, today: date | None = None) -> tuple[Plan, dict]:
         "ftp": ftp,
     }
     return plan, context
+
+
+def save_snapshot(
+    db: Session, plan: Plan, plan_start: date, ftp: int | None, lthr: int | None
+) -> None:
+    """Friert die Planung ein: Tage ab Planbeginn werden ersetzt, frühere bleiben,
+    wie sie waren – sie sind die Grundlage für den Passungs-Score."""
+    db.execute(delete(PlannedWorkout).where(PlannedWorkout.day >= plan_start))
+    position: dict[date, int] = {}
+    for w in plan.workouts:
+        if w.day < plan_start or w.kind == "done":
+            continue
+        pos = position.get(w.day, 0)
+        position[w.day] = pos + 1
+        db.add(
+            PlannedWorkout(
+                day=w.day,
+                position=pos,
+                kind=w.kind,
+                title=w.title,
+                hours=w.hours,
+                tss=w.tss,
+                description=w.description,
+                program=w.program,
+                variant=w.variant,
+                level=w.level,
+                ftp_w=ftp,
+                lthr_bpm=lthr,
+                event_id=w.event_id,
+            )
+        )
+    db.commit()
+
+
+def planned_dict(p: PlannedWorkout) -> dict:
+    return {
+        "id": p.id,
+        "day": p.day.isoformat(),
+        "kind": p.kind,
+        "title": p.title,
+        "hours": p.hours,
+        "tss": p.tss,
+        "description": p.description,
+        "program": p.program,
+    }
 
 
 def calendar(db: Session, start: date, end: date) -> dict:
@@ -160,21 +210,28 @@ def calendar(db: Session, start: date, end: date) -> dict:
                     "km": round((a.distance_m or 0) / 1000, 1),
                     "tss": round(a.tss) if a.tss is not None else None,
                     "load_basis": a.load_basis,
+                    "compliance": compliance_dict(db.get(PlanCompliance, a.id)),
                 }
             )
-    for w in plan.workouts:
-        key = w.day.isoformat()
-        if key in days and w.kind not in ("rest", "event"):
-            days[key]["workouts"].append(
-                {
-                    "kind": w.kind,
-                    "title": w.title,
-                    "hours": w.hours,
-                    "tss": w.tss,
-                    "description": w.description,
-                    "program": w.program,
-                }
-            )
+    planned_rows = db.scalars(
+        select(PlannedWorkout)
+        .where(PlannedWorkout.day >= start, PlannedWorkout.day <= end)
+        .order_by(PlannedWorkout.day, PlannedWorkout.position)
+    ).all()
+    matched = set(
+        db.scalars(select(PlanCompliance.planned_id).where(PlanCompliance.planned_id.is_not(None)))
+    )
+    today = date.fromisoformat(context["today"])
+    for p in planned_rows:
+        key = p.day.isoformat()
+        if key in days and p.kind not in ("rest", "event"):
+            item = planned_dict(p)
+            # vergangene Einheit ohne zugeordnete Aktivität: verpasst
+            item["missed"] = p.day < today and p.id not in matched
+            item["past"] = p.day < today or (p.day == today and p.id in matched)
+            if item["past"] and not item["missed"]:
+                continue  # absolviert – die Aktivität zeigt den Score
+            days[key]["workouts"].append(item)
     for e in events:
         for i in range(max(1, e.days or 1)):
             key = (e.start_date + timedelta(days=i)).isoformat()

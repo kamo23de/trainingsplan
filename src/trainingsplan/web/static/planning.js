@@ -255,14 +255,14 @@
             title="${esc(e.title)} – bearbeiten">${e.main ? "★ " : ""}${esc(e.title)}${e.days > 1 ? ` (${e.day_index}/${e.days})` : ""}${e.distance_km ? `<span class="ci-meta">${nf0.format(e.distance_km / e.days)} km</span>` : ""}</button>`).join("");
         const acts = day.activities.map((a) => `<div class="cal-item done" data-activity="${a.id}" tabindex="0" role="button"
             title="${esc(a.name || a.category)} – Details anzeigen"><i class="dot" style="background:${css("--series-" + CATEGORY_SLOT[a.category])}"></i>
-            <span class="ci-title">${esc(a.name || a.category)}</span><span class="ci-meta">${fmtH(a.hours)} · ${nf0.format(a.km)} km${a.tss != null ? ` · ${a.tss}${a.load_basis === "hr" ? "*" : ""} TSS` : ""}</span></div>`).join("");
+            <span class="ci-title">${TP.scoreBadge(a.compliance, true)}${esc(a.name || a.category)}</span><span class="ci-meta">${fmtH(a.hours)} · ${nf0.format(a.km)} km${a.tss != null ? ` · ${a.tss}${a.load_basis === "hr" ? "*" : ""} TSS` : ""}</span></div>`).join("");
         // Geplante Einheiten gibt es nur ab Planbeginn (heute bzw. morgen)
         const plans = day.workouts.map((p, idx) => {
           const ref = `${key}#${idx}`;
           workoutIndex[ref] = { ...p, day: key };
           const cross = CROSS[p.kind];
-          return `<button class="cal-item plan${cross ? " cross" : ""}" data-workout="${ref}" style="--intensity:${RAMP[INTENSITY[p.kind] ?? 1]}">
-            <span class="ci-title">${cross ? `<span class="sport">${cross}</span>` : ""}${esc(cross ? p.title.replace(/^(Rudern|Laufen): /, "") : p.title)}</span><span class="ci-meta">${fmtH(p.hours)} · ${p.tss} TSS</span></button>`;
+          return `<button class="cal-item plan${cross ? " cross" : ""}${p.missed ? " missed" : ""}" data-workout="${ref}" style="--intensity:${RAMP[INTENSITY[p.kind] ?? 1]}">
+            <span class="ci-title">${cross ? `<span class="sport">${cross}</span>` : ""}${esc(cross ? p.title.replace(/^(Rudern|Laufen): /, "") : p.title)}</span><span class="ci-meta">${p.missed ? "verpasst · " : ""}${fmtH(p.hours)} · ${p.tss} TSS</span></button>`;
         }).join("");
         const empty = !events && !acts && !plans && !isPast ? `<button class="cal-add" data-new-event-date="${key}" title="Nebenevent an diesem Tag anlegen">+</button>` : "";
         cells.push(`<div class="cal-day${inMonth ? "" : " other"}${key === today ? " today" : ""}${isPast ? " past" : ""}">
@@ -279,19 +279,72 @@
 
   // Geplante Einheit im Overlay
   const workoutDialog = document.getElementById("workout-dialog");
-  function openWorkout(w) {
+  function fmtStep(st, ftp) {
+    const dur = st.seconds ? fmtH(st.seconds / 3600) : "bis Rundentaste";
+    const target = st.low != null ? ` · ${st.low}–${st.high} % FTP${ftp ? ` (${Math.round(st.low * ftp / 100)}–${Math.round(st.high * ftp / 100)} W)` : ""}` : "";
+    return `<li><span class="st-name">${esc(st.name)}</span><span class="st-meta">${dur}${target}${st.notes ? " · " + esc(st.notes) : ""}</span></li>`;
+  }
+  function renderSteps(steps, ftp) {
+    return `<ol class="steps">${steps.map((st) => st.repeat
+      ? `<li class="repeat"><span class="st-name">${st.repeat} ×</span><ol>${st.steps.map((x) => fmtStep(x, ftp)).join("")}</ol></li>`
+      : fmtStep(st, ftp)).join("")}</ol>`;
+  }
+
+  async function openWorkout(w) {
     document.getElementById("workout-title").textContent = `${w.title} · ${fmtDate(w.day)}`;
     const program = w.program && TP.exercises ? TP.exercises.renderProgram(w.program) : "";
     workoutDialog.classList.toggle("wide", Boolean(program));
-    document.getElementById("workout-body").innerHTML = `
+    const body = document.getElementById("workout-body");
+    body.innerHTML = `
+      ${w.missed ? `<p class="missed-note">Diese Einheit wurde nicht absolviert.</p>` : ""}
       <div class="tiles act-tiles">
         <div class="tile"><div class="value">${fmtH(w.hours)}</div><div class="label">Dauer</div></div>
         <div class="tile"><div class="value">${w.tss}</div><div class="label">geplante Belastung (TSS)</div></div>
       </div>
       ${program || `<p>${esc(w.description)}</p>`}
+      <div id="workout-structure"></div>
+      <div class="garmin-box" id="garmin-box"></div>
       <p class="muted">Der Plan wird bei jeder neuen Aktivität und jeder Änderung an Events oder Verfügbarkeit neu berechnet.</p>`;
     workoutDialog.showModal();
-    document.getElementById("workout-body").scrollTop = 0;
+    body.scrollTop = 0;
+    if (!w.id) return;
+    try {
+      const [detail, device] = await Promise.all([api(`/api/planned/${w.id}`), api("/api/device")]);
+      if (!program && detail.steps.length > 1) {
+        document.getElementById("workout-structure").innerHTML = `<h4 class="steps-head">Ablauf auf dem Gerät</h4>${renderSteps(detail.steps, detail.ftp_w)}`;
+      }
+      if (detail.exportable && !w.missed) renderGarminBox(detail, device);
+    } catch (err) {
+      document.getElementById("garmin-box").innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderGarminBox(detail, device) {
+    const box = document.getElementById("garmin-box");
+    box.innerHTML = `
+      <h4>Auf Garmin übertragen ${TP.infoButton("garmin_transfer")}</h4>
+      <p class="sub">${device.connected
+        ? `Gerät gefunden: <code>${esc(device.path)}</code>`
+        : "Kein Garmin-Gerät als Laufwerk gefunden. Gerät per USB anschließen oder die Datei herunterladen."}</p>
+      <div class="actions">
+        <button class="btn primary" id="garmin-send" ${device.connected ? "" : "disabled"}>Auf Gerät übertragen</button>
+        <a class="btn" href="/api/planned/${detail.id}/fit" download="${esc(detail.file_name)}">FIT-Datei herunterladen</a>
+        ${device.connected ? "" : `<button class="btn" id="garmin-recheck">Erneut suchen</button>`}
+      </div>
+      <p class="garmin-status" id="garmin-status" role="status" aria-live="polite"></p>`;
+    const status = (t, cls = "") => { const el = document.getElementById("garmin-status"); el.textContent = t; el.className = "garmin-status " + cls; };
+    document.getElementById("garmin-recheck")?.addEventListener("click", async () => renderGarminBox(detail, await api("/api/device")));
+    document.getElementById("garmin-send")?.addEventListener("click", async (ev) => {
+      ev.target.disabled = true;
+      status("Wird übertragen …");
+      try {
+        const r = await api(`/api/planned/${detail.id}/send`, { method: "POST" });
+        status(`Übertragen nach ${r.path}. Gerät auswerfen – das Workout erscheint danach unter Training › Workouts.`, "ok");
+      } catch (err) {
+        status(err.message, "error");
+        ev.target.disabled = false;
+      }
+    });
   }
 
   // --- Ereignisse --------------------------------------------------------------

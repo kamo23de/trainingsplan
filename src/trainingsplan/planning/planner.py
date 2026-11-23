@@ -94,6 +94,8 @@ class Workout:
     description: str
     event_id: int | None = None
     program: str | None = None  # Übungsprogramm bei Rumpf-Einheiten (core-a/b/c, mobility)
+    variant: int = 0  # Ausprägung der Einheit (für Beschreibung und Garmin-Export)
+    level: int = 0  # beim Laufen: Zahl der bisher geplanten Läufe
 
 
 @dataclass
@@ -212,7 +214,15 @@ def _make(
     title, text = describe(kind, hours, ftp, variant, lthr, level)
     program = core_program(variant) if kind == "core" else None
     return Workout(
-        day, kind, title, hours, round(hours * TSS_PER_HOUR[kind]), text, program=program
+        day,
+        kind,
+        title,
+        hours,
+        round(hours * TSS_PER_HOUR[kind]),
+        text,
+        program=program,
+        variant=variant,
+        level=level,
     )
 
 

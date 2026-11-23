@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     database_url: str | None = None
     history_years: int = 4
 
+    # Zielordner für Workouts auf einem per USB verbundenen Garmin-Gerät. Leer lassen:
+    # die App sucht unter /Volumes nach Garmin/NewFiles.
+    garmin_device_dir: Path | None = None
+
     # Nur für Server-Betrieb; lokal liegt der Schlüssel im macOS-Schlüsselbund.
     garmin_api_key: str | None = None
 
