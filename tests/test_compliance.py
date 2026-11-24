@@ -138,3 +138,93 @@ def test_import_scores_against_frozen_plan(tmp_path, db):
         detail = client.get(f"/api/activities/{c.activity_id}").json()
     assert detail["compliance"]["score"] == c.score
     assert detail["compliance"]["rating"] == "gut"
+
+
+# --- Zuordnung ------------------------------------------------------------------
+
+
+def test_strength_session_is_matched_to_core_not_to_bike(db):
+    """Fall aus der Praxis: morgens Krafttraining, Radeinheit kommt erst noch."""
+    bike_plan, core_plan = planned("sweetspot", 1.5, 108, 0), planned("core", 0.25, 6, 1)
+    db.add_all([bike_plan, core_plan])
+    core = activity(1, sport="training", sub="strength_training", hours=0.3, tss=8, intensity=None)
+    db.add(core)
+    db.flush()
+    evaluate_day(db, DAY)
+    c = _scores(db)[core.id]
+    assert c.planned_kind == "core" and not c.needs_confirmation
+
+
+def test_strength_without_core_plan_is_not_matched_to_bike(db):
+    db.add(planned("endurance", 1, 50))
+    core = activity(1, sport="training", sub="strength_training", hours=0.3, tss=8, intensity=None)
+    db.add(core)
+    db.flush()
+    evaluate_day(db, DAY)
+    c = _scores(db)[core.id]
+    assert c.planned_id is None and c.score is None
+
+
+def test_order_in_plan_does_not_matter(db):
+    db.add_all([planned("core", 0.25, 6, 0), planned("endurance", 1.0, 50, 1)])
+    ride = activity(1, hours=1.0, tss=50)
+    core = activity(2, sport="training", sub="strength_training", hours=0.25, tss=6, intensity=None)
+    db.add_all([core, ride])
+    db.flush()
+    evaluate_day(db, DAY)
+    scores = _scores(db)
+    assert scores[ride.id].planned_kind == "endurance"
+    assert scores[core.id].planned_kind == "core"
+
+
+def test_two_similar_rides_for_one_plan_need_confirmation(db):
+    db.add(planned("endurance", 1.0, 50))
+    a, b = activity(1, hours=0.9, tss=45), activity(2, hours=1.1, tss=55)
+    db.add_all([a, b])
+    db.flush()
+    evaluate_day(db, DAY)
+    scores = _scores(db)
+    assert scores[a.id].needs_confirmation and scores[b.id].needs_confirmation
+
+
+def test_substitute_sport_needs_confirmation(db):
+    db.add(planned("row", 0.75, 41))
+    run = activity(1, sport="running", sub="generic", hours=0.75, tss=45)
+    db.add(run)
+    db.flush()
+    evaluate_day(db, DAY)
+    c = _scores(db)[run.id]
+    assert c.planned_kind == "row" and c.needs_confirmation
+
+
+def test_manual_assignment_is_kept_on_reevaluation(db):
+    from trainingsplan.analytics.compliance import assign
+
+    bike_plan = planned("endurance", 1.0, 50)
+    db.add(bike_plan)
+    a, b = activity(1, hours=0.9, tss=45), activity(2, hours=1.1, tss=55)
+    db.add_all([a, b])
+    db.flush()
+    evaluate_day(db, DAY)
+    assign(db, b, bike_plan.id)
+    evaluate_day(db, DAY)
+    scores = _scores(db)
+    assert scores[b.id].planned_id == bike_plan.id and scores[b.id].manual
+    assert scores[a.id].planned_id is None and not scores[a.id].needs_confirmation
+
+
+def test_assignment_api(db):
+    p = planned("endurance", 1.0, 50, day=DAY)
+    db.add(p)
+    a, b = activity(1, hours=0.9, tss=45), activity(2, hours=1.1, tss=55)
+    db.add_all([a, b])
+    db.flush()
+    evaluate_day(db, DAY)
+    db.commit()
+    with TestClient(app) as client:
+        assert len(client.get("/api/compliance/open").json()) == 2
+        r = client.post(f"/api/activities/{a.id}/assignment", json={"planned_id": p.id})
+        assert r.status_code == 200 and r.json()["manual"] and r.json()["score"] is not None
+        assert client.get("/api/compliance/open").json() == []
+        r = client.post(f"/api/activities/{b.id}/assignment", json={"planned_id": None})
+        assert r.json()["score"] is None

@@ -297,6 +297,7 @@ def attach_scores(db: Session, rows: list[dict]) -> list[dict]:
         c = scores.get(r["id"])
         r["plan_score"] = c.score if c else None
         r["plan_title"] = c.planned_title if c else None
+        r["plan_confirm"] = bool(c.needs_confirmation) if c else False
     return rows
 
 

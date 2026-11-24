@@ -85,9 +85,12 @@ def _score_new_activities(db, first_new_id: int) -> None:
         ).all()
         for c in rows:
             a = db.get(Activity, c.activity_id)
+            hint = (
+                " – Zuordnung unklar, bitte in der App bestätigen" if c.needs_confirmation else ""
+            )
             typer.echo(
                 f"  Passung {a.start_time:%d.%m.} {a.name or a.sport}: "
-                f"{c.score:.1f}/10 ({c.planned_title or 'Ruhetag'})"
+                f"{c.score:.1f}/10 ({c.planned_title or 'Ruhetag'}){hint}"
             )
 
 

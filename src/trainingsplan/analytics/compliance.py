@@ -10,19 +10,27 @@ Bewertet wird jede Aktivität gegen die für ihren Tag eingefrorene Planung
 | Belastung   | 0–3    | dasselbe für TSS                                        |
 | Intensität  | 0–2    | Intensitätsfaktor im Zielbereich der Einheit            |
 
-Mehrere Aktivitäten an einem Tag werden den geplanten Einheiten so zugeordnet,
-dass jede Einheit die am besten passende Aktivität bekommt. eBike-Pendelfahrten
-werden nicht bewertet. Wird an einem geplanten Ruhetag trainiert, gibt es einen
-festen Score: locker und kurz 6, sonst 3.
+Zuordnung bei mehreren Einheiten am Tag: Die Reihenfolge im Plan spielt keine
+Rolle. Zugeordnet wird nur, was von der Sportart her passt (gleiche Sportart oder
+Ausdauer gegen Ausdauer); unter den möglichen Zuordnungen gewinnt die mit den
+meisten passenden Sportarten und dem höchsten Gesamtscore. Ist das nicht eindeutig
+– zwei Zuordnungen liegen fast gleichauf, oder eine Aktivität passt nur als Ersatz
+mit anderer Sportart –, wird sie zur Bestätigung markiert und die App fragt nach.
+Von Hand festgelegte Zuordnungen bleiben bei jeder Neubewertung erhalten.
+
+eBike-Pendelfahrten werden nicht bewertet. Wird an einem geplanten Ruhetag
+trainiert, gibt es einen festen Score: locker und kurz 6, sonst 3.
 """
 
 from __future__ import annotations
 
+import itertools
+import json
 import math
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from trainingsplan.analytics.categories import BIKE, EBIKE, ROW, RUN, STRENGTH, category_of
@@ -132,6 +140,33 @@ def _rest_day_score(activity: Activity) -> Score:
     return Score(total, 0, 0, 0, 0, note)
 
 
+AMBIGUITY_MARGIN = 1.5  # Punkte: so nah dürfen zwei Zuordnungen nicht beieinanderliegen
+EXACT_BONUS, PARTIAL_BONUS = 20.0, 5.0  # passende Sportart zuerst, dann Score
+
+
+def _objective(
+    assignment: dict[int, PlannedWorkout | None], scores: dict[tuple[int, int], Score]
+) -> float:
+    total = 0.0
+    for activity_id, p in assignment.items():
+        if p is None:
+            continue
+        s = scores[(activity_id, p.id)]
+        total += s.total + (EXACT_BONUS if s.sport == 2 else PARTIAL_BONUS)
+    return total
+
+
+def _assignments(
+    activities: list[Activity], sessions: list[PlannedWorkout], scores: dict[tuple[int, int], Score]
+):
+    """Alle zulässigen Zuordnungen: jede Einheit höchstens einmal, nur passende Sportarten."""
+    options = [[None, *[p for p in sessions if scores[(a.id, p.id)].sport > 0]] for a in activities]
+    for combo in itertools.product(*options):
+        used = [p.id for p in combo if p is not None]
+        if len(used) == len(set(used)):
+            yield dict(zip([a.id for a in activities], combo, strict=True))
+
+
 def evaluate_day(db: Session, day: date) -> int:
     """Bewertet alle Aktivitäten eines Tages neu. Gibt die Zahl der Bewertungen zurück.
     Ohne eingefrorene Planung für den Tag wird nichts bewertet."""
@@ -142,53 +177,122 @@ def evaluate_day(db: Session, day: date) -> int:
         return 0
     activities = [
         a
-        for a in db.scalars(select(Activity)).all()
+        for a in db.scalars(select(Activity).order_by(Activity.start_time)).all()
         if a.start_time.date() == day and category_of(a.sport, a.sub_sport, a.is_ebike) != EBIKE
     ]
-    db.execute(
-        delete(PlanCompliance).where(
-            PlanCompliance.activity_id.in_([a.id for a in activities] or [-1])
+    existing = {
+        c.activity_id: c
+        for c in db.scalars(
+            select(PlanCompliance).where(
+                PlanCompliance.activity_id.in_([a.id for a in activities] or [-1])
+            )
         )
-    )
-
+    }
     sessions = [p for p in planned if p.kind != "rest"]
-    results: dict[int, tuple[PlannedWorkout | None, Score]] = {}
-    free = list(activities)
-    # Wichtigste Einheit zuerst die beste Aktivität wählen lassen
-    for p in sorted(sessions, key=lambda p: -p.tss):
-        if not free:
-            break
-        best = max(free, key=lambda a: score_pair(p, a).total)
-        results[best.id] = (p, score_pair(p, best))
-        free.remove(best)
-    for a in free:
-        if not sessions:
-            results[a.id] = (planned[0], _rest_day_score(a))
-        else:
-            results[a.id] = (
-                None,
-                Score(None, None, None, None, None, "zusätzliche Einheit, nicht geplant"),
-            )
+    by_id = {p.id: p for p in sessions}
 
-    for activity_id, (p, s) in results.items():
-        db.add(
-            PlanCompliance(
-                activity_id=activity_id,
-                planned_id=p.id if p else None,
-                score=s.total,
-                sport_pts=s.sport,
-                duration_pts=s.duration,
-                load_pts=s.load,
-                intensity_pts=s.intensity,
-                planned_title=p.title if p else None,
-                planned_kind=p.kind if p else None,
-                planned_hours=p.hours if p else None,
-                planned_tss=p.tss if p else None,
-                note=s.note,
-            )
-        )
+    # Von Hand festgelegte Zuordnungen bleiben stehen
+    fixed: dict[int, PlannedWorkout | None] = {}
+    for a in activities:
+        c = existing.get(a.id)
+        if c is not None and c.manual:
+            fixed[a.id] = by_id.get(c.planned_id) if c.planned_id else None
+    open_acts = [a for a in activities if a.id not in fixed]
+    open_sessions = [p for p in sessions if p not in fixed.values()]
+    scores = {(a.id, p.id): score_pair(p, a) for a in activities for p in sessions}
+
+    ranked = sorted(
+        _assignments(open_acts, open_sessions, scores), key=lambda asg: -_objective(asg, scores)
+    )
+    best = ranked[0] if ranked else {}
+    unclear: set[int] = set()
+    if len(ranked) > 1:
+        top = _objective(best, scores)
+        for alt in ranked[1:]:
+            if top - _objective(alt, scores) >= AMBIGUITY_MARGIN:
+                break
+            unclear |= {aid for aid in best if alt[aid] is not best[aid]}
+    for aid, p in best.items():
+        if p is not None and scores[(aid, p.id)].sport < 2:
+            unclear.add(aid)  # andere Sportart als geplant: Ersatz oder zusätzlich?
+
+    for c in existing.values():
+        if not c.manual:
+            db.delete(c)
     db.flush()
-    return len(results)
+
+    count = 0
+    for a in activities:
+        p = fixed[a.id] if a.id in fixed else best.get(a.id)
+        if p is not None:
+            s = scores[(a.id, p.id)]
+        elif not sessions:
+            s = _rest_day_score(a)
+        else:
+            s = Score(None, None, None, None, None, "zusätzliche Einheit, nicht geplant")
+        candidates = [
+            {
+                "planned_id": q.id,
+                "title": q.title,
+                "kind": q.kind,
+                "score": scores[(a.id, q.id)].total,
+            }
+            for q in sessions
+            if scores[(a.id, q.id)].sport > 0  # nur Einheiten mit passender Sportart
+        ]
+        rest_ref = planned[0] if not sessions else None
+        row = existing.get(a.id) if a.id in fixed else None
+        values = dict(
+            planned_id=p.id
+            if p
+            else (rest_ref.id if rest_ref and p is None and not sessions else None),
+            score=s.total,
+            sport_pts=s.sport,
+            duration_pts=s.duration,
+            load_pts=s.load,
+            intensity_pts=s.intensity,
+            planned_title=p.title if p else None,
+            planned_kind=p.kind if p else ("rest" if not sessions else None),
+            planned_hours=p.hours if p else None,
+            planned_tss=p.tss if p else None,
+            note=s.note,
+            candidates=json.dumps(candidates, ensure_ascii=False),
+            needs_confirmation=a.id in unclear and a.id not in fixed,
+            manual=a.id in fixed,
+        )
+        if row is not None:
+            for key, value in values.items():
+                setattr(row, key, value)
+        else:
+            db.add(PlanCompliance(activity_id=a.id, **values))
+        count += 1
+    db.flush()
+    return count
+
+
+def assign(db: Session, activity: Activity, planned_id: int | None) -> None:
+    """Legt die Zuordnung einer Aktivität von Hand fest (``None``: zusätzliche Einheit)
+    und bewertet den Tag neu."""
+    day = activity.start_time.date()
+    c = db.get(PlanCompliance, activity.id)
+    if c is None:
+        c = PlanCompliance(activity_id=activity.id)
+        db.add(c)
+    c.manual = True
+    c.planned_id = planned_id
+    c.needs_confirmation = False
+    # Eine Einheit gehört nur zu einer Aktivität: andere Handzuordnungen darauf lösen
+    if planned_id is not None:
+        for other in db.scalars(
+            select(PlanCompliance).where(
+                PlanCompliance.planned_id == planned_id,
+                PlanCompliance.activity_id != activity.id,
+                PlanCompliance.manual.is_(True),
+            )
+        ):
+            other.manual = False
+    db.flush()
+    evaluate_day(db, day)
 
 
 def compliance_dict(c: PlanCompliance | None) -> dict | None:
@@ -211,6 +315,9 @@ def compliance_dict(c: PlanCompliance | None) -> dict | None:
         "planned_tss": c.planned_tss,
         "note": c.note,
         "rating": rating(c.score),
+        "manual": bool(c.manual),
+        "needs_confirmation": bool(c.needs_confirmation),
+        "candidates": json.loads(c.candidates) if c.candidates else [],
     }
 
 

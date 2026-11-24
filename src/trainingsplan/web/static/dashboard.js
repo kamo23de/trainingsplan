@@ -234,7 +234,7 @@
       <td class="num">${r.np_w ? r.np_w + " W" : "–"}</td>
       <td class="num">${r.avg_hr ?? "–"}</td>
       <td class="num" title="${r.load_basis === "hr" ? "aus Herzfrequenz" : r.load_basis === "power" ? "aus Leistung" : ""}">${r.tss ?? "–"}${r.load_basis === "hr" ? "*" : ""}</td>
-      <td class="num">${r.plan_score != null ? TP.scoreBadge({ score: r.plan_score, rating: r.plan_score >= 8 ? "gut" : r.plan_score >= 5 ? "teilweise" : "abweichend", planned_title: r.plan_title }) : '<span class="muted">–</span>'}</td>
+      <td class="num">${r.plan_confirm ? TP.scoreBadge({ needs_confirmation: true }) : r.plan_score != null ? TP.scoreBadge({ score: r.plan_score, rating: r.plan_score >= 8 ? "gut" : r.plan_score >= 5 ? "teilweise" : "abweichend", planned_title: r.plan_title }) : '<span class="muted">–</span>'}</td>
     </tr>`).join("");
     document.getElementById(id).innerHTML = rows.length ? head + `<tbody>${body}</tbody>`
       : `<tbody><tr><td class="muted">Keine Einträge im Zeitraum</td></tr></tbody>`;
@@ -264,6 +264,7 @@
     activityTable("table-recent", d.recent);
   }
 
+  document.addEventListener("tp:assignment", () => load());
   document.querySelectorAll("[data-range]").forEach((b) => b.addEventListener("click", () => {
     state.range = b.dataset.range;
     localStorageSet("range", state.range);

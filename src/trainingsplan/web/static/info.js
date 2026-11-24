@@ -323,6 +323,12 @@ window.TP_INFO = {
       <p><b>8–10</b> gut · <b>5–7,9</b> teilweise · <b>unter 5</b> abweichend. Training an einem
       geplanten Ruhetag ergibt 6 (locker und kurz) bzw. 3. eBike-Pendeln wird nicht
       bewertet, zusätzliche Einheiten ohne Plan ebenfalls nicht.</p>
+      <p><b>Zuordnung:</b> Die Reihenfolge der Einheiten im Plan spielt keine Rolle. Eine
+      Aktivität wird nur einer Einheit mit passender Sportart zugeordnet – ein
+      Krafttraining also der Rumpf-Einheit, nie der Radeinheit. Ist das nicht eindeutig
+      (zwei ähnliche Fahrten, oder Laufen statt Rudern), erscheint ein <b>?</b> und die App
+      fragt nach. Eine von Hand festgelegte Zuordnung bleibt erhalten und lässt sich in der
+      Detailansicht jederzeit ändern.</p>
       <p>Neu bewerten, z. B. nach Änderung der FTP: <code>uv run trainingsplan score</code></p>`,
   },
   garmin_transfer: {
