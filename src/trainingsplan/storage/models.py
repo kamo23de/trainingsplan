@@ -183,6 +183,11 @@ class PlanCompliance(Base):
     planned_hours: Mapped[float | None] = mapped_column(Float)
     planned_tss: Mapped[float | None] = mapped_column(Float)
     note: Mapped[str | None] = mapped_column(Text)
+    # Zuordnung von Hand festgelegt (bleibt bei Neubewertung erhalten)
+    manual: Mapped[bool | None] = mapped_column(default=False)
+    # Zuordnung unklar: Nutzer soll bestätigen; Kandidaten als JSON
+    needs_confirmation: Mapped[bool | None] = mapped_column(default=False)
+    candidates: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

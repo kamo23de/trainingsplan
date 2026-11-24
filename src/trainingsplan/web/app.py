@@ -8,15 +8,18 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from trainingsplan import __version__
 from trainingsplan.analytics.activity_detail import activity_detail
+from trainingsplan.analytics.categories import category_of
+from trainingsplan.analytics.compliance import assign, compliance_dict
 from trainingsplan.analytics.dashboard import RANGES, build_dashboard
 from trainingsplan.config import get_settings
 from trainingsplan.storage.db import init_db, session_scope
-from trainingsplan.storage.models import Activity
+from trainingsplan.storage.models import Activity, PlanCompliance, PlannedWorkout
 from trainingsplan.web.planning_api import router as planning_router
 
 DbSession = Annotated[Session, Depends(session_scope)]
@@ -75,6 +78,47 @@ def summary(db: DbSession) -> dict:
 @app.get("/api/dashboard")
 def dashboard_data(db: DbSession, range: RangeKey = "1y") -> dict:  # noqa: A002
     return build_dashboard(db, range)
+
+
+class AssignmentIn(BaseModel):
+    planned_id: int | None = None  # None: zusätzliche Einheit ohne Plan
+
+
+@app.post("/api/activities/{activity_id}/assignment")
+def set_assignment(activity_id: int, data: AssignmentIn, db: DbSession) -> dict:
+    activity = db.get(Activity, activity_id)
+    if activity is None:
+        raise HTTPException(status_code=404, detail="Aktivität nicht gefunden")
+    if data.planned_id is not None:
+        planned = db.get(PlannedWorkout, data.planned_id)
+        if planned is None or planned.day != activity.start_time.date():
+            raise HTTPException(status_code=422, detail="Die Einheit gehört nicht zu diesem Tag")
+    assign(db, activity, data.planned_id)
+    db.commit()
+    return compliance_dict(db.get(PlanCompliance, activity_id)) or {}
+
+
+@app.get("/api/compliance/open")
+def open_confirmations(db: DbSession) -> list[dict]:
+    """Aktivitäten, deren Zuordnung zum Plan bestätigt werden sollte."""
+    rows = db.scalars(
+        select(PlanCompliance).where(PlanCompliance.needs_confirmation.is_(True))
+    ).all()
+    out = []
+    for c in rows:
+        a = db.get(Activity, c.activity_id)
+        if a is None:
+            continue
+        out.append(
+            {
+                "activity_id": a.id,
+                "date": a.start_time.isoformat(),
+                "name": a.name,
+                "category": category_of(a.sport, a.sub_sport, a.is_ebike),
+                "compliance": compliance_dict(c),
+            }
+        )
+    return sorted(out, key=lambda r: r["date"], reverse=True)
 
 
 @app.get("/api/activities/{activity_id}")

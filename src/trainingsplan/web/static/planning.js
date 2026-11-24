@@ -569,6 +569,19 @@
     renderCalendar().then(() => document.getElementById("calendar-section").scrollIntoView({ behavior: "smooth", block: "start" }));
   });
 
+  // Offene Zuordnungen: Aktivitäten, bei denen unklar ist, welche Einheit gemeint war
+  async function renderOpenAssignments() {
+    const open = await api("/api/compliance/open");
+    const box = document.getElementById("assign-banner");
+    box.hidden = !open.length;
+    if (!open.length) return;
+    box.innerHTML = `<h2>Bitte Zuordnung bestätigen ${TP.infoButton("compliance")}</h2>
+      <p class="sub">Bei ${open.length === 1 ? "dieser Aktivität" : `diesen ${open.length} Aktivitäten`} ist nicht eindeutig, welche geplante Einheit gemeint war.</p>
+      <div class="assign-list">${open.map((o) => `<button class="btn" data-activity="${o.activity_id}">
+        ${fmtDate(o.date.slice(0, 10))} · ${esc(o.name || o.category)}${o.compliance.planned_title ? ` <span class="muted">→ ${esc(o.compliance.planned_title)}?</span>` : ""}</button>`).join("")}</div>`;
+  }
+  document.addEventListener("tp:assignment", () => { renderOpenAssignments(); renderCalendar(); });
+
   async function reload() {
     [state.plan, state.events] = await Promise.all([api("/api/plan"), api("/api/events")]);
     state.today = state.plan.context.today;
@@ -576,7 +589,7 @@
     renderStatus();
     renderEvents();
     renderSeason();
-    await Promise.all([renderCalendar(), renderProjection()]);
+    await Promise.all([renderCalendar(), renderProjection(), renderOpenAssignments()]);
   }
 
   renderAvailability();

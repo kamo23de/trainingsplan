@@ -12,12 +12,18 @@
 
   // Passungs-Score 0–10 als Abzeichen: Statusfarbe plus Text, nie Farbe allein
   TP.scoreBadge = (c, compact = false) => {
+    if (c && c.needs_confirmation) {
+      return `<span class="score score-ask" title="Zuordnung zum Plan unklar – bitte bestätigen">?</span>`;
+    }
     if (!c || c.score == null) return "";
     const nf = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
     const cls = c.score >= 8 ? "good" : c.score >= 5 ? "warn" : "bad";
     const title = `Passung zum Plan: ${nf.format(c.score)}/10 (${c.rating})${c.planned_title ? " – geplant: " + c.planned_title : ""}`;
     return `<span class="score score-${cls}" title="${TP.esc(title)}">${nf.format(c.score)}${compact ? "" : "/10"}</span>`;
   };
+
+  // Nach einer geänderten Zuordnung sollen Kalender und Tabellen neu laden
+  TP.notifyAssignment = () => document.dispatchEvent(new CustomEvent("tp:assignment"));
 
   TP.css = (name) => getComputedStyle(document.body).getPropertyValue(name).trim();
 

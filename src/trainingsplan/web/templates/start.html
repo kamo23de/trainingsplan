@@ -24,6 +24,7 @@
         <div><dt>Nächstes Hauptevent</dt><dd>–</dd></div>
         <div><dt>Phase diese Woche</dt><dd>–</dd></div>
         <div><dt>Heute geplant</dt><dd>–</dd></div>
+        <div><dt>Zuordnungen offen</dt><dd>–</dd></div>
       </dl>
       <span class="start-go">Zur Planung →</span>
     </a>
@@ -43,7 +44,8 @@
       last ? `${fmt(last.date.slice(0, 10))} · ${last.name || last.category}` : "–"]);
   } catch (e) { /* Startseite bleibt ohne Zahlen nutzbar */ }
   try {
-    const [plan, events] = await Promise.all([fetch("/api/plan").then((r) => r.json()), fetch("/api/events").then((r) => r.json())]);
+    const [plan, events, open] = await Promise.all([fetch("/api/plan").then((r) => r.json()),
+      fetch("/api/events").then((r) => r.json()), fetch("/api/compliance/open").then((r) => r.json())]);
     const today = plan.context.today;
     const main = events.filter((e) => e.priority === "A" && e.end_date >= today);
     const next = main[0];
@@ -55,6 +57,7 @@
       week ? week.phase : "–",
       plan.context.plan_start > today ? "heute schon trainiert"
         : todays ? (todays.kind === "rest" ? "Ruhetag" : `${todays.title}, ${todays.hours.toLocaleString("de-DE")} h`) : "–",
+      open.length ? `${open.length} – bitte bestätigen` : "keine",
     ]);
   } catch (e) { /* ignorieren */ }
 })();

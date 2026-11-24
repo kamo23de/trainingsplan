@@ -36,3 +36,17 @@ def test_pages_and_navigation():
         start = client.get("/").text
         assert 'href="/rueckblick"' in start and 'href="/planung"' in start
         assert client.get("/planung").status_code == 200
+
+
+def test_init_db_adds_new_columns_to_existing_tables():
+    from sqlalchemy import inspect, text
+
+    from trainingsplan.storage.db import get_engine, init_db
+
+    init_db()
+    engine = get_engine()
+    with engine.begin() as conn:  # Stand vor dem Update simulieren
+        conn.execute(text('ALTER TABLE plan_compliance DROP COLUMN "needs_confirmation"'))
+    init_db()
+    columns = {c["name"] for c in inspect(engine).get_columns("plan_compliance")}
+    assert "needs_confirmation" in columns

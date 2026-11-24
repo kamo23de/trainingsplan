@@ -33,11 +33,25 @@
   const hoursText = (h) => (h >= 1 ? `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")} h` : `${Math.round(h * 60)} min`);
 
   // --- Passung zum Plan -------------------------------------------------------
+  function assignmentChoices(c) {
+    const options = (c.candidates || []).map((k) => `
+      <button class="btn choice${k.planned_id === c.planned_id && c.score != null ? " current" : ""}" data-assign="${k.planned_id}">
+        ${esc(k.title)} <span class="muted">(${nf1.format(k.score)}/10)</span></button>`).join("");
+    return `<div class="choices">${options}
+      <button class="btn choice${c.score == null && c.manual ? " current" : ""}" data-assign="">Zusätzliche Einheit (nicht geplant)</button></div>`;
+  }
+
   function complianceHtml(c) {
     if (!c) return "";
+    const ask = c.needs_confirmation;
+    const canAssign = (c.candidates || []).length > 0;
+    const question = ask ? `<div class="assign-ask">
+        <p><b>Welche geplante Einheit war das?</b> Die Zuordnung ist nicht eindeutig${c.planned_title ? ` – vorläufig zugeordnet zu „${esc(c.planned_title)}“` : ""}.</p>
+        ${assignmentChoices(c)}</div>` : "";
+    const change = !ask && canAssign ? `<details class="assign-change"><summary>Zuordnung ändern${c.manual ? " (von Hand festgelegt)" : ""}</summary>${assignmentChoices(c)}</details>` : "";
     if (c.score == null) {
-      return `<section class="card compliance"><h2>Passung zum Plan ${info("compliance")}</h2>
-        <p class="muted">${esc(c.note || "nicht bewertet")}</p></section>`;
+      return `<section class="card compliance" data-compliance-for="${currentId}"><h2>Passung zum Plan ${info("compliance")}</h2>
+        ${question}<p class="muted">${esc(c.note || "nicht bewertet")}</p>${change}</section>`;
     }
     const parts = c.parts ? Object.entries(c.parts).map(([label, [pts, max]]) => `
       <div class="cp-row"><span>${label}</span>
@@ -45,13 +59,40 @@
         <span class="cp-val">${nf1.format(pts)} / ${max}</span></div>`).join("") : "";
     const planned = c.planned_kind === "rest" ? "geplant: Ruhetag"
       : `geplant: <b>${esc(c.planned_title)}</b>${c.planned_hours ? ` · ${hoursText(c.planned_hours)}` : ""}${c.planned_tss ? ` · ${nf0.format(c.planned_tss)} TSS` : ""}`;
-    return `<section class="card compliance">
+    const scoreTag = TP.scoreBadge({ ...c, needs_confirmation: false });
+    return `<section class="card compliance" data-compliance-for="${currentId}">
       <h2>Passung zum Plan ${info("compliance")}</h2>
-      <div class="cp-head">${TP.scoreBadge(c)}<span class="cp-rating">${esc(c.rating)}</span><span class="sub">${planned}</span></div>
+      ${question}
+      <div class="cp-head">${scoreTag}<span class="cp-rating">${esc(c.rating)}${ask ? " (vorläufig)" : ""}</span><span class="sub">${planned}</span></div>
       ${parts ? `<div class="cp-parts">${parts}</div>` : ""}
       ${c.note ? `<p class="cp-note">${esc(c.note)}</p>` : ""}
       ${c.planned_description ? `<details><summary>Geplante Vorgabe</summary><p>${esc(c.planned_description)}</p></details>` : ""}
+      ${change}
     </section>`;
+  }
+
+  // Zuordnung festlegen und Ansicht neu laden
+  body.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-assign]");
+    if (!btn || currentId == null) return;
+    btn.disabled = true;
+    const plannedId = btn.dataset.assign === "" ? null : Number(btn.dataset.assign);
+    try {
+      const res = await fetch(`/api/activities/${currentId}/assignment`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planned_id: plannedId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      TP.notifyAssignment();
+      await openActivity(currentId);
+    } catch (err) {
+      btn.disabled = false;
+      alertBox(`Zuordnung nicht gespeichert (${err.message}).`);
+    }
+  });
+  function alertBox(text) {
+    const box = body.querySelector(".compliance");
+    if (box) box.insertAdjacentHTML("afterbegin", `<p class="form-error">${esc(text)}</p>`);
   }
 
   // --- Inhalt ----------------------------------------------------------------
@@ -236,10 +277,13 @@
     charts = [];
   }
 
+  let currentId = null;
+
   async function openActivity(id) {
+    currentId = id;
     dispose();
     body.innerHTML = `<p class="muted">Lade Aktivität …</p>`;
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
     try {
       const res = await fetch(`/api/activities/${id}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
