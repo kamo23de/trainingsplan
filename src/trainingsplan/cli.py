@@ -26,11 +26,18 @@ def init_db_cmd(
 
 
 @app.command()
-def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = True) -> None:
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    reload: bool = True,
+    access_log: bool = typer.Option(True, help="Jeden Seitenaufruf protokollieren"),
+) -> None:
     """Startet das Dashboard unter http://127.0.0.1:8000."""
     import uvicorn
 
-    uvicorn.run("trainingsplan.web.app:app", host=host, port=port, reload=reload)
+    uvicorn.run(
+        "trainingsplan.web.app:app", host=host, port=port, reload=reload, access_log=access_log
+    )
 
 
 # --- Garmin-Zugang -----------------------------------------------------------------
@@ -153,8 +160,12 @@ def sync(
     since: datetime = typer.Option(
         None, formats=["%Y-%m-%d"], help="Ab Datum abrufen; Standard: ab letzter Aktivität"
     ),
+    quiet: bool = typer.Option(
+        False, "--quiet", help="Nur eine Zeile mit Zeitstempel ausgeben (für den Hintergrunddienst)"
+    ),
 ) -> None:
     """Holt neue Aktivitäten über die Garmin Personal API."""
+    say = (lambda *a, **k: None) if quiet else typer.echo
     from sqlalchemy import func, select
 
     from trainingsplan.ingest.importer import ImportStats, Outcome, history_cutoff, import_fit
@@ -178,7 +189,7 @@ def sync(
             latest = db.scalar(select(func.max(Activity.start_time)))
             since = (latest - timedelta(days=1)) if latest else cutoff
         start_date = max(since.date(), cutoff.date())
-        typer.echo(f"Rufe Aktivitäten ab {start_date} ab …")
+        say(f"Rufe Aktivitäten ab {start_date} ab …")
 
         # Planung von heute einfrieren, bevor neue Aktivitäten sie verschieben
         from trainingsplan.planning.service import compute_plan
@@ -189,12 +200,12 @@ def sync(
         try:
             client = open_client()
         except GarminAuthError as exc:
-            typer.echo(f"Fehler: {exc}", err=True)
+            typer.echo(f"{datetime.now():%Y-%m-%d %H:%M} Fehler: {exc}", err=True)
             raise typer.Exit(1) from exc
 
         with client:
             summaries = list(iter_activities(client, start_date, datetime.now(UTC).date()))
-            typer.echo(f"{len(summaries)} Aktivitäten gefunden")
+            say(f"{len(summaries)} Aktivitäten gefunden")
             for i, summary in enumerate(summaries, start=1):
                 activity_id = summary.get("activityId")
                 if activity_id is None:
@@ -227,11 +238,12 @@ def sync(
                     stats.errors.append(f"{activity_id}: {exc}")
                 if i % 25 == 0:
                     db.commit()
-                    typer.echo(f"… {i}/{len(summaries)}")
+                    say(f"… {i}/{len(summaries)}")
         db.commit()
         _score_new_activities(db, first_new)
 
-    typer.echo(f"Fertig: {stats.summary()}")
+    stamp = f"{datetime.now():%Y-%m-%d %H:%M} sync: " if quiet else "Fertig: "
+    typer.echo(f"{stamp}{stats.summary()}")
     for err in stats.errors[:10]:
         typer.echo(f"  Fehler: {err}", err=True)
     if stats.errors:
@@ -262,6 +274,94 @@ def score(
         scored = sum(evaluate_day(db, d) for d in days)
         db.commit()
     typer.echo(f"{scored} Aktivitäten an {len(days)} geplanten Tagen bewertet.")
+
+
+# --- Hintergrunddienste (macOS) ---------------------------------------------------
+
+service_app = typer.Typer(help="Hintergrunddienste auf dem Mac: Server und stündlicher Abruf")
+app.add_typer(service_app, name="service")
+
+
+@service_app.command("install")
+def service_install(
+    interval: int = typer.Option(60, min=15, max=1440, help="Abruf alle … Minuten"),
+    port: int = typer.Option(8000, help="Port des Servers"),
+    server: bool = typer.Option(True, help="Auch den Server als Dienst starten"),
+) -> None:
+    """Richtet die Dienste ein (oder aktualisiert sie) und startet sie sofort."""
+    from trainingsplan import service
+
+    try:
+        cfg = service.ServiceConfig(uv=service.find_uv(), port=port, interval_minutes=interval)
+        service._check_platform()
+        written = service.install(cfg, with_server=server)
+    except service.ServiceError as exc:
+        typer.echo(f"Fehler: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for path in written:
+        typer.echo(f"Eingerichtet: {path}")
+    if server:
+        typer.echo(
+            f"Server läuft unter http://127.0.0.1:{port} – auch nach Neustart und Anmeldung."
+        )
+    typer.echo(f"Garmin-Abruf alle {interval} Minuten. Protokolle: {cfg.log_dir}")
+    typer.echo(
+        "Beim ersten Abruf fragt macOS evtl., ob der Zugriff auf den Schlüsselbund erlaubt ist: "
+        "„Immer erlauben“ wählen."
+    )
+
+
+@service_app.command("uninstall")
+def service_uninstall() -> None:
+    """Stoppt und entfernt beide Dienste."""
+    from trainingsplan import service
+
+    removed = service.uninstall()
+    typer.echo("Entfernt: " + (", ".join(p.name for p in removed) if removed else "nichts"))
+
+
+@service_app.command("status")
+def service_status() -> None:
+    """Zeigt, ob die Dienste laufen, und die letzten Abrufe."""
+    from trainingsplan import service
+
+    names = {service.SERVER_LABEL: "Server", service.SYNC_LABEL: "Garmin-Abruf"}
+    for st in service.status():
+        if not st.installed:
+            state = "nicht eingerichtet"
+        elif st.running:
+            state = "läuft"
+        elif st.loaded:
+            state = (
+                "bereit (wartet auf den nächsten Lauf)"
+                if st.label == service.SYNC_LABEL
+                else "geladen, läuft aber nicht – Protokoll prüfen"
+            )
+        else:
+            state = "eingerichtet, aber nicht geladen – `service install` erneut ausführen"
+        exit_info = (
+            f", letzter Exit-Code {st.last_exit}"
+            if st.last_exit not in (None, "0", "(never exited)")
+            else ""
+        )
+        typer.echo(f"{names[st.label]}: {state}{exit_info}")
+    lines = service.tail(service.LOG_DIR / "sync.log", 5)
+    if lines:
+        typer.echo("Letzte Abrufe:")
+        for line in lines:
+            typer.echo(f"  {line}")
+
+
+@service_app.command("logs")
+def service_logs(
+    which: str = typer.Argument("sync", help="sync oder server"),
+    lines: int = typer.Option(40, help="Anzahl Zeilen"),
+) -> None:
+    """Zeigt das Protokoll eines Dienstes."""
+    from trainingsplan import service
+
+    for line in service.tail(service.LOG_DIR / f"{which}.log", lines):
+        typer.echo(line)
 
 
 # --- Leistungsschwellen ------------------------------------------------------------
