@@ -14,6 +14,9 @@ from trainingsplan.storage.models import Base
 def get_engine() -> Engine:
     settings = get_settings()
     settings.ensure_dirs()
+    if settings.db_url.startswith("sqlite"):
+        # Server und Hintergrundabruf schreiben gleichzeitig: bei Sperre bis 30 s warten
+        return create_engine(settings.db_url, connect_args={"timeout": 30})
     return create_engine(settings.db_url)
 
 

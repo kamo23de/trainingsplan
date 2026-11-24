@@ -137,6 +137,29 @@ TP_DATA_DIR=./demo-data uv run python scripts/seed_demo.py
 TP_DATA_DIR=./demo-data uv run trainingsplan serve
 ```
 
+## Hintergrunddienste (macOS)
+
+Damit die App immer läuft und neue Aktivitäten von selbst kommen:
+
+```sh
+uv run trainingsplan service install          # Server + Abruf jede Stunde
+uv run trainingsplan service install --interval 30 --no-server   # nur Abruf, alle 30 min
+uv run trainingsplan service status           # läuft alles? letzte Abrufe
+uv run trainingsplan service logs             # Protokoll des Abrufs (server: Protokoll des Servers)
+uv run trainingsplan service uninstall        # beides entfernen
+```
+
+- Der **Server** startet beim Anmelden und nach einem Absturz neu, erreichbar unter
+  http://127.0.0.1:8000 (nur auf diesem Mac).
+- Der **Abruf** läuft beim Anmelden und danach im eingestellten Abstand; ein noch laufender
+  Abruf wird nie doppelt gestartet. Er friert dabei auch die Tagesplanung für den
+  Passungs-Score ein.
+- Beides läuft nur, solange du angemeldet bist und der Mac wach ist. Beim ersten Abruf fragt
+  macOS evtl. nach dem Zugriff auf den Schlüsselbund: „Immer erlauben“.
+- Protokolle: `~/Library/Logs/trainingsplan/`
+- Nach einem Update (`git pull`) die Dienste mit `service install` neu laden. Solange der
+  Server-Dienst läuft, `serve` nicht zusätzlich von Hand starten (Port belegt).
+
 ## Garmin anbinden
 
 Beide Wege liefern die Original-FIT-Dateien und landen im selben Import. Dieselbe Fahrt
